@@ -37,47 +37,6 @@ License: GPL2
 
 
 
-function borosnews_config(){
-	$form_model = array(
-		'ipt_email' => array(
-			'db_column' => 'person_email',
-			'type' => 'text',
-			'label' => 'Email',
-			'placeholder' => 'Seu e-mail',
-			'std' => '',
-			'class' => 'required valid txt',
-			'validate' => 'email',
-			'required' => true,
-			'accept_std' => false,
-		),
-		'ipt_nome' => array(
-			'db_column' => 'person_name',
-			'type' => 'text',
-			'label' => 'Nome',
-			'placeholder' => 'Seu nome',
-			'std' => '',
-			'class' => 'required txt',
-			'validate' => 'string',
-			'required' => true,
-			'accept_std' => false,
-		),
-		'person_sobrenome' => array(
-			'db_column' => 'person_metadata',
-			'type' => 'text',
-			'label' => 'Sobrenome',
-			'placeholder' => 'Sobrenome',
-			'std' => '',
-			'class' => 'required valid txt',
-			'validate' => 'string',
-			'required' => true,
-			'accept_std' => false,
-		),
-	);
-	return $form_model;
-}
-
-
-
 /**
  * TESTES
  * 
@@ -91,8 +50,8 @@ function newsletter_test(){
 	pre(get_class_vars('BorosNewsletter'), 'BorosNewsletter get_class_vars');
 	pre(get_object_vars($newsletter), 'BorosNewsletter get_object_vars');
 	
-	global $wpdb;
-	pre($wpdb, 'wpdb');
+	//global $wpdb;
+	//pre($wpdb, 'wpdb');
 }
 
 /**
@@ -103,9 +62,10 @@ register_activation_hook( __FILE__, array('BorosNewsletter', 'check_table') );
 
 /**
  * Iniciar o plugin no processo corrente
+ * Prioridade última para poder aplicar filtros nas variáveis através de outros plugins
  * 
  */
-add_action( 'init', array('BorosNewsletter', 'init') );
+add_action( 'init', array('BorosNewsletter', 'init'), 99 );
 
 class BorosNewsletter {
 	
@@ -113,7 +73,7 @@ class BorosNewsletter {
 	 * Versão
 	 * 
 	 */
-	$version = '1.0';
+	var $version = '1.0';
 	
 	/**
 	 * Sinaliza se o plugin Boros Elements está ativado, pois depende das funcões de formulário deste.
@@ -129,17 +89,154 @@ class BorosNewsletter {
 	static $table_name = 'newsletter';
 	
 	/**
-	 * Lista de elementos
+	 * Form count
+	 * Determina a quantidade de forms exibidos na página. Cada vez que um form é exibido no frontend, esse contador aumenta.
+	 * É necessário para definir diversos ids para o html dos forms, permitindo que as âncoras e retornos de erro dsejam 
+	 * enviados para o form correto na página
 	 * 
 	 */
-	var $elements = array();
-	var $form_model = array();
+	static $form_count = 0;
+	
+	/**
+	 * Formulários registrados
+	 * 
+	 */
+	var $forms = array();
+	
+	/**
+	 * Form options
+	 * É o que definirá cada um dos forms de newsletter, pois poderá exisir mais de um na página/site, com diferentes 
+	 * configurações, e deverão ser processados separadamente.
+	 * 
+	 */
+	var $form_options = array(
+		'form_id' => 'form_newsletter',
+		'prepend' => '',
+		'append' => '',
+		'layout' => 'normal',
+	);
+	
+	/**
+	 * Opções do form
+	 * 
+	 */
+	var $form_attrs = array(
+		'id' => 'form-newsletter',
+		'class' => 'form-newsletter',
+	);
+	
+	/**
+	 * Modelo padrão dos campos do formulário
+	 * 
+	 */
+	var $form_model = array(
+		'ipt_email' => array(
+			'db_column' => 'person_email',
+			'type' => 'text',
+			'label' => 'Email',
+			'placeholder' => 'Seu e-mail',
+			'std' => '',
+			'validate' => 'email',
+			'required' => true,
+			'accept_std' => false,
+			'classes' => array(
+				'form_group_class' => '',
+				'label_class' => '',
+				'input_class' => '',
+				'input_col_class' => '',
+			),
+			'addon' => array(
+				'before' => '',
+				'after' => '',
+			),
+		),
+		'ipt_nome' => array(
+			'db_column' => 'person_name',
+			'type' => 'text',
+			'label' => 'Nome',
+			'placeholder' => 'Seu nome',
+			'std' => '',
+			'validate' => 'string',
+			'required' => true,
+			'accept_std' => false,
+			'classes' => array(
+				'form_group_class' => '',
+				'label_class' => '',
+				'input_class' => '',
+				'input_col_class' => '',
+			),
+			'addon' => array(
+				'before' => '',
+				'after' => '',
+			),
+		),
+		'person_sobrenome' => array(
+			'db_column' => 'person_metadata',
+			'type' => 'text',
+			'label' => 'Sobrenome',
+			'placeholder' => 'Sobrenome',
+			'std' => '',
+			'validate' => 'string',
+			'required' => true,
+			'accept_std' => false,
+			'classes' => array(
+				'form_group_class' => '',
+				'label_class' => '',
+				'input_class' => '',
+				'input_col_class' => '',
+			),
+			'addon' => array(
+				'before' => '',
+				'after' => '',
+			),
+			'append_submit' => false,
+		),
+		'submit' => array(
+			'db_column' => 'skip',
+			'type' => 'submit',
+			'label' => 'Enviar',
+			'validate' => false,
+			'required' => false,
+			'classes' => array(
+				'form_group_class' => '',
+				'label_class' => '',
+				'input_class' => '',
+				'input_col_class' => '',
+			),
+			'addon' => array(
+				'before' => '',
+				'after' => '',
+			),
+		),
+	);
 	
 	/**
 	 * Erros
 	 * 
 	 */
-	var $errors = array();
+	var $form_errors = array();
+	
+	/**
+	 * Dados válidos
+	 * 
+	 */
+	var $form_data = array();
+	
+	/**
+	 * Mensagens
+	 * 
+	 */
+	var $form_messages = array(
+		'error' => 'Ocorreram alguns erros, por favor verifique.',
+		'success' => 'Formulário enviado com sucesso!',
+		'blank' => '',
+	);
+	
+	/**
+	 * Status do form: blank, error, success
+	 * 
+	 */
+	var $form_status = 'blank';
 	
 	/**
 	 * Singleton: usar apenas uma instância da classe por requisição de página.
@@ -164,11 +261,18 @@ class BorosNewsletter {
 		
 		// actions
 		add_action( 'admin_menu', array($this, 'admin_page') );
-		add_action( 'admin_init', array('admin_remove_user') );
+		add_action( 'admin_init', array($this, 'admin_remove_user') );
+		
+		// filtros
+		$this->form_model = apply_filters( 'boros_newsletter_form_model', $this->form_model );
+		$this->form_options = apply_filters( 'boros_newsletter_form_options', $this->form_options );
+		
+		$this->register_forms(); //pre($this->forms, 'forms');
+		$this->proccess_data();
 	}
 	
 	private function dependecy_check(){
-		$this->boros_active = ( plugin_is_active('boros/boros.php') ? true : false;
+		$this->boros_active = plugin_is_active('boros/boros.php') ? true : false;
 	}
 	
 	/**
@@ -182,11 +286,296 @@ class BorosNewsletter {
 	}
 	
 	/**
-	 * Página do admin
+	 * Os modelos de formulário são registrados em $forms, permitindo que sejam usados mais que um modelo em um mesmo site.
 	 * 
 	 */
-	private function admin_page(){
-		$admin_page = add_menu_page( 'Newsletter', 'Newsletter', 'edit_pages', 'newsletter_controls' , 'admin_page_output', 'dashicons-email' );
+	private function register_forms(){
+		$this->forms = apply_filters( 'boros_newsletter_register_forms', $this->forms );
+	}
+	
+	private function get_form_config( $form ){
+		$form['form_options'] = boros_parse_args( $this->form_options, $form['form_options'] );
+		$form['form_attrs'] = boros_parse_args( $this->form_attrs, $form['form_attrs'] );
+		$form['form_messages'] = boros_parse_args( $this->form_messages, $form['form_messages'] );
+		return $form;
+	}
+	
+	/**
+	 * Processar os dados em caso de $_POST
+	 * 
+	 */
+	private function proccess_data(){
+		if( isset($_POST['form_type']) and $_POST['form_type'] == 'boros_newsletter_form' ){
+			if( isset($_POST['form_name']) and isset($this->forms[$_POST['form_name']]) ){
+				// configuração do form
+				$form = $this->get_form_config( $this->forms[$_POST['form_name']] );
+				
+				return false;
+				/**
+				 * Preparar os dados
+				 * 
+				 */
+				foreach( $_POST as $key => $value ){
+					if( isset($form_model[$key]) ){
+						// sanitize
+						$san_data = sanitize_form_input($value);
+						
+						// label do campo
+						$label = $form_model[$key]['label'];
+						
+						// obrigatório e pegou vazio
+						if( ($form_model[$key]['required'] == true) and empty($san_data) ){
+							$form_errors[$key] = "O campo {$label} precisa ser preenchido.";
+						}
+						// preenchido, validar
+						elseif( !empty($san_data) ){
+							
+							// preenchido, porém é valor padrão e não aceito
+							if( ($form_model[$key]['accept_std'] == false) and ($san_data == $form_model[$key]['std']) ){
+								$form_errors[$key] = "O campo {$label} precisa ser preenchido corretamente.";
+							}
+							else{
+								switch( $form_model[$key]['validate'] ){
+									case 'string':
+										// OK!
+										if( filter_var( $san_data, FILTER_SANITIZE_STRING) ){
+											$form_data[$key] = $san_data;
+										}
+										// ERROR!
+										else{
+											$form_errors[$key] = "{$label} não é string válida : {$san_data}.";
+										}
+										break;
+									case 'email':
+										// OK!
+										$san_email = filter_var($san_data, FILTER_SANITIZE_EMAIL);
+										if( filter_var( $san_email, FILTER_VALIDATE_EMAIL) ){
+											// verificar se já existe na base
+											global $wpdb;
+											$email = $wpdb->get_row("SELECT person_email FROM {$wpdb->prefix}newsletter WHERE person_email = '{$san_email}'");
+											if( $email )
+												$form_errors[$key] = "E-mail já cadastrado.";
+											else
+												$form_data[$key] = $san_email;
+										}
+										// ERROR!
+										else{
+											$form_errors[$key] = "{$label} não é email válido : {$san_email}.";
+										}
+										break;
+									case 'bool':
+										// OK!
+										if( filter_var( $san_data, FILTER_VALIDATE_BOOLEAN) ){
+											$form_data[$key] = $san_data;
+										}
+										// ERROR!
+										else{
+											$form_errors[$key] = "{$label} não é um inteiro válido : {$san_data}.";
+										}
+										break;
+									case 'estado':
+										$estados = array('Acre','Alagoas','Amapá','Amazonas','Bahia','Ceará','Distrito Federal','Espírito Santo', 'Goiás', 'Maranhão','Mato Grosso','Mato Grosso do Sul','Minas Gerais', 'Pará','Paraíba', 'Paraná','Pernambuco', 'Piauí','Rio de Janeiro','Rio Grande do Norte','Rio Grande do Sul','Rondônia','Roraima','Santa Catarina','São Paulo','Sergipe','Tocantins');
+										// OK!
+										if( in_array( $san_data, $estados ) ){
+											$form_data[$key] = $san_data;
+										}
+										// ERROR!
+										else{
+											$form_errors[$key] = "{$san_data} não é um estado válido.";
+											$form_data[$key] = $form_model[$key]['std'];
+										}
+										
+										break;
+								}
+							}
+						}
+						// opcional e vazio
+						else{
+							$form_data[$key] = $san_data;
+						}
+					} //if input exists
+					//pre($form_model, 'form_model');
+					//pre($form_data, 'form_data');
+					//pre($form_errors, 'form_errors');
+				} //foreach
+				
+				
+				/**
+				 * Se não tiver errors, gravar dados e exibir mensagem
+				 * 
+				 * Monta o array de gravação, conforme as colunas ( 'coluna' => 'valor' )
+				 * Para a coluna 'person_metadata' é criado um array para a gravação do array serializado
+				 * 
+				 */
+				//pre($form_data, 'form_data');
+				//pre($form_errors, 'form_errors');
+				/**/
+				if( empty($form_errors) and !empty($form_data) ){
+					$data_array = array();
+					
+					foreach( $form_data as $name => $value ){
+						$column = $form_model[$name]['db_column'];
+						switch( $column ){
+							case 'person_name':
+							case 'person_email':
+								$data_array[ $column ] = $value;
+								break;
+							
+							// adicionar quantos metadados existirem no modelo
+							case 'person_metadata':
+								$data_array[ $column ][$name] = $value;
+								break;
+						}
+					}
+					
+					// adicionar datano formato sql com o ajuste de horário
+					date_default_timezone_set('America/Sao_Paulo');
+					$data_array[ 'person_date' ] = date("Y-m-d H:i:s");
+					
+					if( isset($data_array['person_metadata']) and !is_serialized( $data_array['person_metadata'] ) ){
+						$data_array['person_metadata'] = maybe_serialize($data_array['person_metadata']);
+					}
+					
+					//pre($data_array, 'data_array');
+					$wpdb->insert( $wpdb->prefix . 'newsletter', $data_array );
+					$form_msg = '<div class="form_msg"><span class="success">Cadastrado com sucesso.</span></div>';
+					$this->form_status = 'success';
+				}
+				else{
+					$this->form_status = 'error';
+				}
+			}
+		}
+	}
+	
+	/**
+	 * O campo hidden 'form_id' será usado com o 'form_name' para identificar qual o form correto dentro de múltiplos em
+	 * uma mesma página, para que seja exibido as mensagens de erro no form correto.
+	 * 
+	 */
+	function frontend_output( $form_name ){
+		if( isset($this->forms[$form_name]) ){
+			// configuração do form
+			$form = $this->get_form_config( $this->forms[$form_name] );
+			//pre($form, '$form', false);
+			
+			// definir id única para a página, que pode conter diversas instâncias do mesmo form
+			if( !isset($this->forms[$form_name]['count']) ){
+				$this->forms[$form_name]['count'] = 1;
+			}
+			else{
+				$this->forms[$form_name]['count']++;
+			}
+			$form_id = "{$form['form_attrs']['id']}-{$this->forms[$form_name]['count']}";
+			
+			$classes_arr = array(
+				$form['form_attrs']['class'],
+				"form_status_{$this->form_status}",
+			);
+			$classes_arr[] = ($form['form_options']['layout'] == 'normal') ? 'form-normal' : 'form-inline';
+			$classes = implode(' ', $classes_arr);
+			
+			$action = self_url();
+			echo "<form action='{$action}#{$form_id}' method='post' id='{$form_id}' class='{$classes}' role='form'>";
+			echo "<input type='hidden' name='form_type' value='boros_newsletter_form' />";
+			echo "<input type='hidden' name='form_name' value='{$form_name}' />";
+			echo $form['form_options']['prepend'];
+			
+			// exibir mensagens pré-campos
+			if( $this->form_status == 'error' ){
+				echo $form['form_messages']['error'];
+			}
+			elseif( $this->form_status == 'success' ){
+				echo $form['form_messages']['success'];
+			}
+			else{
+				echo $form['form_messages']['blank'];
+			}
+			
+			// exibir campos
+			foreach( $form['form_model'] as $key => $input ){
+				$input['name'] = $key;
+				$input['id'] = "{$key}-{$this->forms[$form_name]['count']}";
+				$input['layout'] = $form['form_options']['layout'];
+				$input['form_name'] = $form_name;
+				$this->show_input($input);
+			}
+			
+			echo $form['form_options']['append'];
+			echo "</form>";
+		}
+		else {
+			echo "Este formulário (id:{$form_name}) não está registrado. É preciso registrar cada form no hook 'boros_newsletter_register_forms'";
+		}
+	}
+	
+	private function show_input( $input ){
+		if( method_exists($this, "input_type_{$input['type']}") ){
+			call_user_func( array($this, "input_type_{$input['type']}"), $input );
+		}
+		else{
+			$this->custom_input_type( $input );
+		}
+	}
+	
+	private function input_type_text( $input ){
+		$type = ( $input['db_column'] == 'person_email' ) ? 'email' : 'text';
+		$size = ( isset($input['size']) ) ? "input-{$input['size']}" : '';
+		if( $input['layout'] == 'inline' ){
+			$html = "<input type='{$type}' name='{$input['name']}' class='form-control {$input['classes']['input_class']} {$size}' id='{$input['id']}' placeholder='{$input['placeholder']}'>";
+			echo "<div class='form-group {$input['classes']['form_group_class']}'>";
+			echo "<label class='sr-only {$input['classes']['label_class']}' for='{$input['id']}'>Email address</label>";
+			$this->input_addon($html, $input);
+			echo "</div>\n";
+		}
+		elseif( $input['layout'] == 'normal' ){
+			
+		}
+		elseif( $input['layout'] == 'horizontal' ){
+			
+		}
+		else{
+			$this->custom_input_layout( $input );
+		}
+	}
+	
+	/**
+	 * Adicionar add-ons caso tenham sido configurados
+	 * 
+	 */
+	private function input_addon( $html, $input ){
+		if( isset($input['addon']) ){
+			echo '<div class="input-group">';
+			if( isset($input['addon']['before']) ){echo "<span class='input-group-addon'>{$input['addon']['before']}</span>";}
+			echo $html;
+			if( isset($input['addon']['after']) ){echo "<span class='input-group-addon'>{$input['addon']['after']}</span>";}
+			echo "</div>\n";
+		}
+		elseif( isset($input['append_submit']) and $input['append_submit'] == true ){
+			$size = ( isset($input['size']) ) ? "input-group-{$input['size']}" : '';
+			echo "<div class='input-group {$size}'>";
+			echo $html;
+			echo "<span class='input-group-btn {$input['append_submit']['input_group_class']}'><button type='submit' class='btn {$input['append_submit']['input_class']}'>{$input['append_submit']['label']}</button></span>";
+			echo "</div>\n";
+		}
+		else{
+			echo $html;
+		}
+	}
+	
+	private function input_type_submit( $input ){
+		$size = ( isset($input['size']) ) ? "btn-{$input['size']}" : '';
+		echo "<input type='submit' class='btn {$input['classes']['input_class']} {$size}' id='{$input['id']}' value='{$input['label']}' />";
+	}
+	
+	private function custom_input_layout( $input ){
+		
+	}
+	
+	private function custom_input_type( $input ){
+		pre( $input, 'custom_input_type', false );
+		$html = '';
+		echo apply_filters( "boros_newsletter_custom_input_{$input['type']}", $html, $input );
 	}
 	
 	/**
@@ -194,7 +583,7 @@ class BorosNewsletter {
 	 * @todo adicionar nonce
 	 * 
 	 */
-	private function admin_remove_user(){
+	function admin_remove_user(){
 		if( isset($_GET['newsletter_action']) and $_GET['newsletter_action'] == 'remove' ){
 			global $wpdb;
 			$person_id = (int)$_GET['person_id'];
@@ -202,7 +591,20 @@ class BorosNewsletter {
 		}
 	}
 	
-	private function admin_page_output(){
+	/**
+	 * Página do admin, registrar
+	 * 
+	 */
+	function admin_page(){
+		$admin_page = add_menu_page( 'Newsletter', 'Newsletter', 'edit_pages', 'newsletter_controls' , array($this, 'admin_page_output'), 'dashicons-email' );
+	}
+	
+	/**
+	 * Página do admin, output
+	 * 
+	 */
+	function admin_page_output(){
+		if( !is_admin() ){ return false; }
 		?>
 		<div class="wrap">
 			<h2><?php echo bloginfo('blogname'); ?> - Newsletter</h2>
