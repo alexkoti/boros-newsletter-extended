@@ -104,6 +104,12 @@ class BorosNewsletter {
 	var $forms = array();
 	
 	/**
+	 * Colunas do admin
+	 * 
+	 */
+	var $admin_page_columns = array();
+	
+	/**
 	 * Form options
 	 * É o que definirá cada um dos forms de newsletter, pois poderá exisir mais de um na página/site, com diferentes 
 	 * configurações, e deverão ser processados separadamente.
@@ -170,7 +176,7 @@ class BorosNewsletter {
 				'after' => '',
 			),
 		),
-		'person_sobrenome' => array(
+		'ipt_sobrenome' => array(
 			'db_column' => 'person_metadata',
 			'type' => 'text',
 			'label' => 'Sobrenome',
@@ -211,18 +217,6 @@ class BorosNewsletter {
 	);
 	
 	/**
-	 * Erros
-	 * 
-	 */
-	var $form_errors = array();
-	
-	/**
-	 * Dados válidos
-	 * 
-	 */
-	var $form_data = array();
-	
-	/**
 	 * Mensagens
 	 * 
 	 */
@@ -230,13 +224,9 @@ class BorosNewsletter {
 		'error' => 'Ocorreram alguns erros, por favor verifique.',
 		'success' => 'Formulário enviado com sucesso!',
 		'blank' => '',
+		'layout' => 'bootstrap3',
+		'show_all' => false,
 	);
-	
-	/**
-	 * Status do form: blank, error, success
-	 * 
-	 */
-	var $form_status = 'blank';
 	
 	/**
 	 * Singleton: usar apenas uma instância da classe por requisição de página.
@@ -268,6 +258,8 @@ class BorosNewsletter {
 		$this->form_options = apply_filters( 'boros_newsletter_form_options', $this->form_options );
 		
 		$this->register_forms(); //pre($this->forms, 'forms');
+		$this->admin_page_columns();
+		$this->set_form_config();
 		$this->proccess_data();
 	}
 	
@@ -293,11 +285,40 @@ class BorosNewsletter {
 		$this->forms = apply_filters( 'boros_newsletter_register_forms', $this->forms );
 	}
 	
-	private function get_form_config( $form ){
-		$form['form_options'] = boros_parse_args( $this->form_options, $form['form_options'] );
-		$form['form_attrs'] = boros_parse_args( $this->form_attrs, $form['form_attrs'] );
-		$form['form_messages'] = boros_parse_args( $this->form_messages, $form['form_messages'] );
-		return $form;
+	/**
+	 * Definir as colunas do admin
+	 * Pode acontecer de um site possuir diversos forms de newsletter, porém com campos extras (person_metadata) diferentes.
+	 * Este filtro permite escolher as colunas que serão exibidas na página do admin, podendo então exibir todas as colunas possíveis.
+	 * 
+	 */
+	private function admin_page_columns(){
+		$this->admin_page_columns = apply_filters( 'boros_newsletter_admin_page_columns', $this->admin_page_columns );
+	}
+	
+	/**
+	 * Mesclar a configuração enviada com os valores padrões.
+	 * 
+	 */
+	private function set_form_config(){
+		foreach( $this->forms as $form_name => $form ){
+			// aplicar valores padrão
+			$this->forms[$form_name]['form_id']       = false; // form postado, por padrão é falso, já que pode ser único na página
+			$this->forms[$form_name]['form_options']  = boros_parse_args( $this->form_options, $this->forms[$form_name]['form_options'] );
+			$this->forms[$form_name]['form_attrs']    = boros_parse_args( $this->form_attrs, $this->forms[$form_name]['form_attrs'] );
+			$this->forms[$form_name]['form_messages'] = boros_parse_args( $this->form_messages, $this->forms[$form_name]['form_messages'] );
+			$this->forms[$form_name]['form_data']     = array();
+			$this->forms[$form_name]['form_errors']   = array();
+			$this->forms[$form_name]['form_status']   = 'blank';
+			
+			// adicionar valores aos inputs
+			foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
+				$this->forms[$form_name]['form_model'][$key]['name']      = $key;
+				$this->forms[$form_name]['form_model'][$key]['layout']    = $this->forms[$form_name]['form_options']['layout'];
+				$this->forms[$form_name]['form_model'][$key]['form_name'] = $form_name;
+				$this->forms[$form_name]['form_model'][$key]['error']     = '';
+				$this->forms[$form_name]['form_model'][$key]['value']     = '';
+			}
+		}
 	}
 	
 	/**
@@ -307,114 +328,97 @@ class BorosNewsletter {
 	private function proccess_data(){
 		if( isset($_POST['form_type']) and $_POST['form_type'] == 'boros_newsletter_form' ){
 			if( isset($_POST['form_name']) and isset($this->forms[$_POST['form_name']]) ){
-				// configuração do form
-				$form = $this->get_form_config( $this->forms[$_POST['form_name']] );
+				$form_name = $_POST['form_name'];
+				//pre($_POST, '$_POST');
 				
-				return false;
+				/**
+				 * Guardar a id html do form postado, incialmente ele é vazio, e para cada instância é criada uma id
+				 * única para cada form, enviada via input:hidden['form_id']
+				 * 
+				 */
+				$this->forms[$form_name]['form_id'] = $_POST['form_id'];
+				
 				/**
 				 * Preparar os dados
 				 * 
 				 */
-				foreach( $_POST as $key => $value ){
-					if( isset($form_model[$key]) ){
-						// sanitize
-						$san_data = sanitize_form_input($value);
+				foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
+					if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) ){
+						$this->set_error( $form_name, $key, "O campo {$input['label']} precisa ser preenchido." );
+						$this->set_value( $form_name, $key, $input['std']);
+					}
+					else{
+						$value = sanitize_text_field($_POST[$key]);
 						
-						// label do campo
-						$label = $form_model[$key]['label'];
-						
-						// obrigatório e pegou vazio
-						if( ($form_model[$key]['required'] == true) and empty($san_data) ){
-							$form_errors[$key] = "O campo {$label} precisa ser preenchido.";
+						// preenchido, porém é valor padrão e não aceito
+						if( ($input['accept_std'] == false) and ($value == $input['std']) ){
+							$this->set_error( $form_name, $key, "O campo {$input['label']} precisa ser preenchido corretamente." );
 						}
-						// preenchido, validar
-						elseif( !empty($san_data) ){
-							
-							// preenchido, porém é valor padrão e não aceito
-							if( ($form_model[$key]['accept_std'] == false) and ($san_data == $form_model[$key]['std']) ){
-								$form_errors[$key] = "O campo {$label} precisa ser preenchido corretamente.";
-							}
-							else{
-								switch( $form_model[$key]['validate'] ){
-									case 'string':
-										// OK!
-										if( filter_var( $san_data, FILTER_SANITIZE_STRING) ){
-											$form_data[$key] = $san_data;
-										}
-										// ERROR!
-										else{
-											$form_errors[$key] = "{$label} não é string válida : {$san_data}.";
-										}
-										break;
-									case 'email':
-										// OK!
-										$san_email = filter_var($san_data, FILTER_SANITIZE_EMAIL);
-										if( filter_var( $san_email, FILTER_VALIDATE_EMAIL) ){
-											// verificar se já existe na base
-											global $wpdb;
-											$email = $wpdb->get_row("SELECT person_email FROM {$wpdb->prefix}newsletter WHERE person_email = '{$san_email}'");
-											if( $email )
-												$form_errors[$key] = "E-mail já cadastrado.";
-											else
-												$form_data[$key] = $san_email;
-										}
-										// ERROR!
-										else{
-											$form_errors[$key] = "{$label} não é email válido : {$san_email}.";
-										}
-										break;
-									case 'bool':
-										// OK!
-										if( filter_var( $san_data, FILTER_VALIDATE_BOOLEAN) ){
-											$form_data[$key] = $san_data;
-										}
-										// ERROR!
-										else{
-											$form_errors[$key] = "{$label} não é um inteiro válido : {$san_data}.";
-										}
-										break;
-									case 'estado':
-										$estados = array('Acre','Alagoas','Amapá','Amazonas','Bahia','Ceará','Distrito Federal','Espírito Santo', 'Goiás', 'Maranhão','Mato Grosso','Mato Grosso do Sul','Minas Gerais', 'Pará','Paraíba', 'Paraná','Pernambuco', 'Piauí','Rio de Janeiro','Rio Grande do Norte','Rio Grande do Sul','Rondônia','Roraima','Santa Catarina','São Paulo','Sergipe','Tocantins');
-										// OK!
-										if( in_array( $san_data, $estados ) ){
-											$form_data[$key] = $san_data;
-										}
-										// ERROR!
-										else{
-											$form_errors[$key] = "{$san_data} não é um estado válido.";
-											$form_data[$key] = $form_model[$key]['std'];
-										}
-										
-										break;
-								}
-							}
-						}
-						// opcional e vazio
 						else{
-							$form_data[$key] = $san_data;
+							switch( $input['validate'] ){
+								case 'string':
+									$value = filter_var( $value, FILTER_SANITIZE_STRING);
+									if( $value == true ){
+										$this->set_value( $form_name, $key, $value);
+									}
+									else{
+										$this->set_error( $form_name, $key, "{$label} não é string válida." );
+										$this->set_value( $form_name, $key, $input['std']);
+									}
+									break;
+								
+								case 'email':
+									$value = filter_var($value, FILTER_SANITIZE_EMAIL);
+									if( filter_var( $value, FILTER_VALIDATE_EMAIL) ){
+										// verificar se já existe na base
+										global $wpdb;
+										$email = $wpdb->get_row("SELECT person_email FROM {$wpdb->prefix}newsletter WHERE person_email = '{$value}'");
+										if( $email ){
+											$this->set_error( $form_name, $key, "E-mail já cadastrado." );
+										}
+									}
+									else{
+										$this->set_error( $form_name, $key, "{$label} não é email válido : {$value}." );
+									}
+									$this->set_value( $form_name, $key, $value);
+									break;
+								
+								case 'bool':
+									if( filter_var( $value, FILTER_VALIDATE_BOOLEAN) ){
+										$this->set_value( $form_name, $key, $value);
+									}
+									else{
+										$this->set_error( $form_name, $key, "{$label} não é um inteiro válido" );
+										$this->set_value( $form_name, $key, $input['std']);
+									}
+									break;
+								
+								case 'estado':
+									$estados = array('Acre','Alagoas','Amapá','Amazonas','Bahia','Ceará','Distrito Federal','Espírito Santo', 'Goiás', 'Maranhão','Mato Grosso','Mato Grosso do Sul','Minas Gerais', 'Pará','Paraíba', 'Paraná','Pernambuco', 'Piauí','Rio de Janeiro','Rio Grande do Norte','Rio Grande do Sul','Rondônia','Roraima','Santa Catarina','São Paulo','Sergipe','Tocantins');
+									if( in_array( $value, $estados ) ){
+										$this->set_value( $form_name, $key, $value);
+									}
+									else{
+										$this->set_error( $form_name, $key, "{$value} não é um estado válido." );
+										$this->set_value( $form_name, $key, $input['std']);
+									}
+									break;
+							}
 						}
-					} //if input exists
-					//pre($form_model, 'form_model');
-					//pre($form_data, 'form_data');
-					//pre($form_errors, 'form_errors');
-				} //foreach
-				
+					}
+					//pre($this->forms[$form_name]['form_model'][$key], $key);
+				}
 				
 				/**
-				 * Se não tiver errors, gravar dados e exibir mensagem
-				 * 
+				 * Preparar e gravar dados
 				 * Monta o array de gravação, conforme as colunas ( 'coluna' => 'valor' )
 				 * Para a coluna 'person_metadata' é criado um array para a gravação do array serializado
 				 * 
 				 */
-				//pre($form_data, 'form_data');
-				//pre($form_errors, 'form_errors');
-				/**/
-				if( empty($form_errors) and !empty($form_data) ){
+				if( empty($this->forms[$form_name]['form_errors']) and !empty($this->forms[$form_name]['form_data']) ){
 					$data_array = array();
-					
-					foreach( $form_data as $name => $value ){
-						$column = $form_model[$name]['db_column'];
+					foreach( $this->forms[$form_name]['form_data'] as $key => $value ){
+						$column = $this->forms[$form_name]['form_model'][$key]['db_column'];
 						switch( $column ){
 							case 'person_name':
 							case 'person_email':
@@ -423,11 +427,10 @@ class BorosNewsletter {
 							
 							// adicionar quantos metadados existirem no modelo
 							case 'person_metadata':
-								$data_array[ $column ][$name] = $value;
+								$data_array[ $column ][$key] = $value;
 								break;
 						}
 					}
-					
 					// adicionar datano formato sql com o ajuste de horário
 					date_default_timezone_set('America/Sao_Paulo');
 					$data_array[ 'person_date' ] = date("Y-m-d H:i:s");
@@ -438,14 +441,34 @@ class BorosNewsletter {
 					
 					//pre($data_array, 'data_array');
 					$wpdb->insert( $wpdb->prefix . 'newsletter', $data_array );
-					$form_msg = '<div class="form_msg"><span class="success">Cadastrado com sucesso.</span></div>';
-					$this->form_status = 'success';
+					$this->forms[$form_name]['form_status'] = 'success';
 				}
 				else{
-					$this->form_status = 'error';
+					$this->forms[$form_name]['form_status'] = 'error';
 				}
+				
+				//pre($this->forms[$form_name], 'form POS');
+				//return false;
 			}
 		}
+	}
+	
+	/**
+	 * Registrar erros no input e no form
+	 * 
+	 */
+	private function set_error( $form_name, $key, $error ){
+		$this->forms[$form_name]['form_model'][$key]['error'] = $error;
+		$this->forms[$form_name]['form_errors'][$key] = $error;
+	}
+	
+	/**
+	 * Registrar dados válidos no input e no form
+	 * 
+	 */
+	private function set_value( $form_name, $key, $value ){
+		$this->forms[$form_name]['form_model'][$key]['value'] = $value;
+		$this->forms[$form_name]['form_data'][$key] = $value;
 	}
 	
 	/**
@@ -456,8 +479,8 @@ class BorosNewsletter {
 	function frontend_output( $form_name ){
 		if( isset($this->forms[$form_name]) ){
 			// configuração do form
-			$form = $this->get_form_config( $this->forms[$form_name] );
-			//pre($form, '$form', false);
+			$form = $this->forms[$form_name];
+			//pre($form, '$form', true);
 			
 			// definir id única para a página, que pode conter diversas instâncias do mesmo form
 			if( !isset($this->forms[$form_name]['count']) ){
@@ -466,27 +489,55 @@ class BorosNewsletter {
 			else{
 				$this->forms[$form_name]['count']++;
 			}
+			// definir a id para esta instância na página, pode haver múltplas na mesma página
 			$form_id = "{$form['form_attrs']['id']}-{$this->forms[$form_name]['count']}";
 			
 			$classes_arr = array(
 				$form['form_attrs']['class'],
-				"form_status_{$this->form_status}",
 			);
 			$classes_arr[] = ($form['form_options']['layout'] == 'normal') ? 'form-normal' : 'form-inline';
+			
+			// modificações para o form postado
+			if( $form_id == $form['form_id'] ){
+				$classes_arr[] = "form-status-{$form['form_status']}";
+			}
+			
 			$classes = implode(' ', $classes_arr);
 			
 			$action = self_url();
 			echo "<form action='{$action}#{$form_id}' method='post' id='{$form_id}' class='{$classes}' role='form'>";
 			echo "<input type='hidden' name='form_type' value='boros_newsletter_form' />";
 			echo "<input type='hidden' name='form_name' value='{$form_name}' />";
+			echo "<input type='hidden' name='form_id' value='{$form_id}' />";
 			echo $form['form_options']['prepend'];
 			
-			// exibir mensagens pré-campos
-			if( $this->form_status == 'error' ){
-				echo $form['form_messages']['error'];
-			}
-			elseif( $this->form_status == 'success' ){
-				echo $form['form_messages']['success'];
+			// exibir mensagens apenas para o form postada
+			if( $form_id == $form['form_id'] ){
+				if( $form['form_status'] == 'error' ){
+					if( $form['form_messages']['layout'] == 'bootstrap3' ){
+						$message = $form['form_messages']['error'];
+						if( $form['form_messages']['show_all'] == true ){
+							foreach( $form['form_errors'] as $key => $error ){
+								$message .= "<p>{$error}</p>";
+							}
+						}
+						echo "<div class='alert alert-danger' role='alert'><button type='button' class='close' data-dismiss='alert'><span aria-hidden='true'>&times;</span><span class='sr-only'>Close</span></button>{$message}</div>";
+					}
+					else{
+						echo apply_filters( "boros_newsletter_{$form_name}_form_message", $form['form_messages']['error'], 'error' );
+					}
+				}
+				elseif( $form['form_status'] == 'success' ){
+					if( $form['form_messages']['layout'] == 'bootstrap3' ){
+						echo "<div class='alert alert-success' role='alert'><button type='button' class='close' data-dismiss='alert'><span aria-hidden='true'>&times;</span><span class='sr-only'>Close</span></button>{$form['form_messages']['success']}</div>";
+					}
+					else{
+						echo apply_filters( "boros_newsletter_{$form_name}_form_message", $form['form_messages']['success'], 'success' );
+					}
+				}
+				else{
+					echo $form['form_messages']['blank'];
+				}
 			}
 			else{
 				echo $form['form_messages']['blank'];
@@ -494,10 +545,12 @@ class BorosNewsletter {
 			
 			// exibir campos
 			foreach( $form['form_model'] as $key => $input ){
-				$input['name'] = $key;
-				$input['id'] = "{$key}-{$this->forms[$form_name]['count']}";
-				$input['layout'] = $form['form_options']['layout'];
-				$input['form_name'] = $form_name;
+				// adicionar ID único por <form>
+				$input['id'] = "{$form_id}-{$key}";
+				// adicionar class de status de validação
+				if( !empty($input['error']) and $form_id == $form['form_id'] ){
+					$input['classes']['form_group_class'] .= ' has-error';
+				}
 				$this->show_input($input);
 			}
 			
@@ -522,9 +575,10 @@ class BorosNewsletter {
 		$type = ( $input['db_column'] == 'person_email' ) ? 'email' : 'text';
 		$size = ( isset($input['size']) ) ? "input-{$input['size']}" : '';
 		if( $input['layout'] == 'inline' ){
-			$html = "<input type='{$type}' name='{$input['name']}' class='form-control {$input['classes']['input_class']} {$size}' id='{$input['id']}' placeholder='{$input['placeholder']}'>";
+			$value = $this->input_reload($input);
+			$html = "<input type='{$type}' name='{$input['name']}' class='form-control {$input['classes']['input_class']} {$size}' id='{$input['id']}' placeholder='{$input['placeholder']}' value='{$value}'>";
 			echo "<div class='form-group {$input['classes']['form_group_class']}'>";
-			echo "<label class='sr-only {$input['classes']['label_class']}' for='{$input['id']}'>Email address</label>";
+			if( $input['label'] != false ){ echo "<label class='sr-onlya {$input['classes']['label_class']}' for='{$input['id']}'>{$input['label']}</label>"; }
 			$this->input_addon($html, $input);
 			echo "</div>\n";
 		}
@@ -576,6 +630,15 @@ class BorosNewsletter {
 		pre( $input, 'custom_input_type', false );
 		$html = '';
 		echo apply_filters( "boros_newsletter_custom_input_{$input['type']}", $html, $input );
+	}
+	
+	private function input_reload( $input ){
+		if( empty($input['value']) ){
+			return $input['std'];
+		}
+		else{
+			return $input['value'];
+		}
 	}
 	
 	/**
