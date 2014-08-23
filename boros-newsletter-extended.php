@@ -41,7 +41,7 @@ License: GPL2
  * TESTES
  * 
  */
-add_action( 'wp_footer', 'newsletter_test' );
+//add_action( 'wp_footer', 'newsletter_test' );
 //add_action( 'admin_footer', 'newsletter_test' );
 function newsletter_test(){
 	$newsletter = BorosNewsletter::init();
@@ -104,128 +104,112 @@ class BorosNewsletter {
 	var $forms = array();
 	
 	/**
-	 * Colunas do admin
+	 * Modelo padrão de configuração
 	 * 
 	 */
-	var $admin_page_columns = array();
-	
-	/**
-	 * Form options
-	 * É o que definirá cada um dos forms de newsletter, pois poderá exisir mais de um na página/site, com diferentes 
-	 * configurações, e deverão ser processados separadamente.
-	 * 
-	 */
-	var $form_options = array(
-		'form_id' => 'form_newsletter',
-		'prepend' => '',
-		'append' => '',
-		'layout' => 'normal',
-	);
-	
-	/**
-	 * Opções do form
-	 * 
-	 */
-	var $form_attrs = array(
-		'id' => 'form-newsletter',
-		'class' => 'form-newsletter',
-	);
-	
-	/**
-	 * Modelo padrão dos campos do formulário
-	 * 
-	 */
-	var $form_model = array(
-		'ipt_email' => array(
-			'db_column' => 'person_email',
-			'type' => 'text',
-			'label' => 'Email',
-			'placeholder' => 'Seu e-mail',
-			'std' => '',
-			'validate' => 'email',
-			'required' => true,
-			'accept_std' => false,
-			'classes' => array(
-				'form_group_class' => '',
-				'label_class' => '',
-				'input_class' => '',
-				'input_col_class' => '',
-			),
-			'addon' => array(
-				'before' => '',
-				'after' => '',
-			),
+	var $defaults = array(
+		'form_options' => array(
+			'type' => 'normal',
+			'layout' => 'bootstrap3',
+			'before' => '',
+			'prepend' => '',
+			'append' => '',
+			'after' => '',
 		),
-		'ipt_nome' => array(
-			'db_column' => 'person_name',
-			'type' => 'text',
-			'label' => 'Nome',
-			'placeholder' => 'Seu nome',
-			'std' => '',
-			'validate' => 'string',
-			'required' => true,
-			'accept_std' => false,
-			'classes' => array(
-				'form_group_class' => '',
-				'label_class' => '',
-				'input_class' => '',
-				'input_col_class' => '',
-			),
-			'addon' => array(
-				'before' => '',
-				'after' => '',
-			),
+		'form_attrs' => array(
+			'id' => 'form-newsletter',
+			'class' => 'form-newsletter',
 		),
-		'ipt_sobrenome' => array(
-			'db_column' => 'person_metadata',
-			'type' => 'text',
-			'label' => 'Sobrenome',
-			'placeholder' => 'Sobrenome',
-			'std' => '',
-			'validate' => 'string',
-			'required' => true,
-			'accept_std' => false,
-			'classes' => array(
-				'form_group_class' => '',
-				'label_class' => '',
-				'input_class' => '',
-				'input_col_class' => '',
-			),
-			'addon' => array(
-				'before' => '',
-				'after' => '',
-			),
-			'append_submit' => false,
+		'form_messages' => array(
+			'error' => 'Ocorreram alguns erros, por favor verifique.',
+			'success' => 'Formulário enviado com sucesso!',
+			'blank' => '',
+			'layout' => 'bootstrap3',
+			'position' => 'before',
+			'show_errors' => true,
+			'show_all_errors' => false,
+			'show_close_button' => false,
 		),
-		'submit' => array(
-			'db_column' => 'skip',
-			'type' => 'submit',
-			'label' => 'Enviar',
-			'validate' => false,
-			'required' => false,
-			'classes' => array(
-				'form_group_class' => '',
-				'label_class' => '',
-				'input_class' => '',
-				'input_col_class' => '',
+		'form_model' => array(
+			'ipt_email' => array(
+				'db_column' => 'person_email',
+				'type' => 'text',
+				'label' => 'Email',
+				'placeholder' => 'Seu e-mail',
+				'std' => '',
+				'validate' => 'email',
+				'required' => true,
+				'accept_std' => false,
+				'classes' => array(
+					'form_group_class' => '',
+					'label_class' => '',
+					'input_class' => '',
+					'input_col_class' => '',
+				),
+				'addon' => array(
+					'before' => '',
+					'after' => '',
+				),
 			),
-			'addon' => array(
-				'before' => '',
-				'after' => '',
+			'ipt_nome' => array(
+				'db_column' => 'person_name',
+				'type' => 'text',
+				'label' => 'Nome',
+				'placeholder' => 'Seu nome',
+				'std' => '',
+				'validate' => 'string',
+				'required' => true,
+				'accept_std' => false,
+				'classes' => array(
+					'form_group_class' => '',
+					'label_class' => '',
+					'input_class' => '',
+					'input_col_class' => '',
+				),
+				'addon' => array(
+					'before' => '',
+					'after' => '',
+				),
 			),
-		),
-	);
-	
-	/**
-	 * Mensagens
-	 * 
-	 */
-	var $form_messages = array(
-		'error' => 'Ocorreram alguns erros, por favor verifique.',
-		'success' => 'Formulário enviado com sucesso!',
-		'blank' => '',
-		'layout' => 'bootstrap3',
-		'show_all' => false,
+			'ipt_sobrenome' => array(
+				'db_column' => 'person_metadata',
+				'type' => 'text',
+				'label' => 'Sobrenome',
+				'placeholder' => 'Sobrenome',
+				'std' => '',
+				'validate' => 'string',
+				'required' => true,
+				'accept_std' => false,
+				'classes' => array(
+					'form_group_class' => '',
+					'label_class' => '',
+					'input_class' => '',
+					'input_col_class' => '',
+				),
+				'addon' => array(
+					'before' => '',
+					'after' => '',
+				),
+				'append_submit' => false,
+			),
+			'submit' => array(
+				'db_column' => 'skip',
+				'type' => 'submit',
+				'label' => 'Enviar',
+				'validate' => false,
+				'required' => false,
+				'classes' => array(
+					'form_group_class' => '',
+					'label_class' => '',
+					'input_class' => '',
+					'input_col_class' => '',
+				),
+				'addon' => array(
+					'before' => '',
+					'after' => '',
+				),
+			),
+		)
 	);
 	
 	/**
@@ -253,14 +237,12 @@ class BorosNewsletter {
 		add_action( 'admin_menu', array($this, 'admin_page') );
 		add_action( 'admin_init', array($this, 'admin_remove_user') );
 		
-		// filtros
-		$this->form_model = apply_filters( 'boros_newsletter_form_model', $this->form_model );
-		$this->form_options = apply_filters( 'boros_newsletter_form_options', $this->form_options );
-		
-		$this->register_forms(); //pre($this->forms, 'forms');
-		$this->admin_page_columns();
-		$this->set_form_config();
-		$this->proccess_data();
+		// continuar apenas caso exista algum form registrado
+		$custom_config = apply_filters( 'boros_newsletter_set_config', array() );
+		if( !empty($custom_config) ){
+			$this->set_form_config( $custom_config );
+			$this->proccess_data();
+		}
 	}
 	
 	private function dependecy_check(){
@@ -278,34 +260,15 @@ class BorosNewsletter {
 	}
 	
 	/**
-	 * Os modelos de formulário são registrados em $forms, permitindo que sejam usados mais que um modelo em um mesmo site.
-	 * 
-	 */
-	private function register_forms(){
-		$this->forms = apply_filters( 'boros_newsletter_register_forms', $this->forms );
-	}
-	
-	/**
-	 * Definir as colunas do admin
-	 * Pode acontecer de um site possuir diversos forms de newsletter, porém com campos extras (person_metadata) diferentes.
-	 * Este filtro permite escolher as colunas que serão exibidas na página do admin, podendo então exibir todas as colunas possíveis.
-	 * 
-	 */
-	private function admin_page_columns(){
-		$this->admin_page_columns = apply_filters( 'boros_newsletter_admin_page_columns', $this->admin_page_columns );
-	}
-	
-	/**
 	 * Mesclar a configuração enviada com os valores padrões.
 	 * 
 	 */
-	private function set_form_config(){
-		foreach( $this->forms as $form_name => $form ){
+	private function set_form_config( $custom_config ){
+		//pre( $custom_config, '$custom_config', false );
+		foreach( $custom_config as $form_name => $form ){
 			// aplicar valores padrão
+			$this->forms[$form_name]                  = boros_parse_args( $this->defaults, $form );
 			$this->forms[$form_name]['form_id']       = false; // form postado, por padrão é falso, já que pode ser único na página
-			$this->forms[$form_name]['form_options']  = boros_parse_args( $this->form_options, $this->forms[$form_name]['form_options'] );
-			$this->forms[$form_name]['form_attrs']    = boros_parse_args( $this->form_attrs, $this->forms[$form_name]['form_attrs'] );
-			$this->forms[$form_name]['form_messages'] = boros_parse_args( $this->form_messages, $this->forms[$form_name]['form_messages'] );
 			$this->forms[$form_name]['form_data']     = array();
 			$this->forms[$form_name]['form_errors']   = array();
 			$this->forms[$form_name]['form_status']   = 'blank';
@@ -313,12 +276,14 @@ class BorosNewsletter {
 			// adicionar valores aos inputs
 			foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
 				$this->forms[$form_name]['form_model'][$key]['name']      = $key;
+				$this->forms[$form_name]['form_model'][$key]['form_type'] = $this->forms[$form_name]['form_options']['type'];
 				$this->forms[$form_name]['form_model'][$key]['layout']    = $this->forms[$form_name]['form_options']['layout'];
 				$this->forms[$form_name]['form_model'][$key]['form_name'] = $form_name;
 				$this->forms[$form_name]['form_model'][$key]['error']     = '';
 				$this->forms[$form_name]['form_model'][$key]['value']     = '';
 			}
 		}
+		//pre($this->forms, 'forms', false);
 	}
 	
 	/**
@@ -343,7 +308,7 @@ class BorosNewsletter {
 				 * 
 				 */
 				foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
-					if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) ){
+					if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) and $input['db_column'] != 'skip' ){
 						$this->set_error( $form_name, $key, "O campo {$input['label']} precisa ser preenchido." );
 						$this->set_value( $form_name, $key, $input['std']);
 					}
@@ -351,7 +316,7 @@ class BorosNewsletter {
 						$value = sanitize_text_field($_POST[$key]);
 						
 						// preenchido, porém é valor padrão e não aceito
-						if( ($input['accept_std'] == false) and ($value == $input['std']) ){
+						if( ($input['accept_std'] == false) and ($value == $input['std']) and $input['db_column'] != 'skip' ){
 							$this->set_error( $form_name, $key, "O campo {$input['label']} precisa ser preenchido corretamente." );
 						}
 						else{
@@ -467,8 +432,10 @@ class BorosNewsletter {
 	 * 
 	 */
 	private function set_value( $form_name, $key, $value ){
-		$this->forms[$form_name]['form_model'][$key]['value'] = $value;
-		$this->forms[$form_name]['form_data'][$key] = $value;
+		if( $this->forms[$form_name]['form_model'][$key]['db_column'] != 'skip' ){
+			$this->forms[$form_name]['form_model'][$key]['value'] = $value;
+			$this->forms[$form_name]['form_data'][$key] = $value;
+		}
 	}
 	
 	/**
@@ -495,53 +462,56 @@ class BorosNewsletter {
 			$classes_arr = array(
 				$form['form_attrs']['class'],
 			);
-			$classes_arr[] = ($form['form_options']['layout'] == 'normal') ? 'form-normal' : 'form-inline';
+			$classes_arr[] = ($form['form_options']['type'] == 'normal') ? 'form-normal' : 'form-inline';
 			
 			// modificações para o form postado
 			if( $form_id == $form['form_id'] ){
 				$classes_arr[] = "form-status-{$form['form_status']}";
 			}
-			
 			$classes = implode(' ', $classes_arr);
 			
+			// mensagens apenas para o form postada
+			$messages_html = '';
+			if( $form_id == $form['form_id'] ){
+				$btn = ( $form['form_messages']['show_close_button'] == true ) ? '<button type="button" class="close" data-dismiss="alert"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>' : '';
+				if( $form['form_status'] == 'error' and $form['form_messages']['show_errors'] == true ){
+					if( $form['form_messages']['layout'] == 'bootstrap3' ){
+						$message = $form['form_messages']['error'];
+						if( $form['form_messages']['show_all_errors'] == true ){
+							foreach( $form['form_errors'] as $key => $error ){
+								$message .= "<p>{$error}</p>";
+							}
+						}
+						$messages_html .= "<div class='alert alert-danger' role='alert'>{$btn}{$message}</div>";
+					}
+					else{
+						$messages_html .= apply_filters( "boros_newsletter_{$form_name}_form_message", $form['form_messages']['error'], 'error' );
+					}
+				}
+				elseif( $form['form_status'] == 'success' ){
+					if( $form['form_messages']['layout'] == 'bootstrap3' ){
+						$messages_html .= "<div class='alert alert-success' role='alert'>{$btn}{$form['form_messages']['success']}</div>";
+					}
+					else{
+						$messages_html .= apply_filters( "boros_newsletter_{$form_name}_form_message", $form['form_messages']['success'], 'success' );
+					}
+				}
+				else{
+					$messages_html .= $form['form_messages']['blank'];
+				}
+			}
+			else{
+				$messages_html .= $form['form_messages']['blank'];
+			}
+			
 			$action = self_url();
+			echo $form['form_options']['before'];
 			echo "<form action='{$action}#{$form_id}' method='post' id='{$form_id}' class='{$classes}' role='form'>";
 			echo "<input type='hidden' name='form_type' value='boros_newsletter_form' />";
 			echo "<input type='hidden' name='form_name' value='{$form_name}' />";
 			echo "<input type='hidden' name='form_id' value='{$form_id}' />";
 			echo $form['form_options']['prepend'];
-			
-			// exibir mensagens apenas para o form postada
-			if( $form_id == $form['form_id'] ){
-				if( $form['form_status'] == 'error' ){
-					if( $form['form_messages']['layout'] == 'bootstrap3' ){
-						$message = $form['form_messages']['error'];
-						if( $form['form_messages']['show_all'] == true ){
-							foreach( $form['form_errors'] as $key => $error ){
-								$message .= "<p>{$error}</p>";
-							}
-						}
-						echo "<div class='alert alert-danger' role='alert'><button type='button' class='close' data-dismiss='alert'><span aria-hidden='true'>&times;</span><span class='sr-only'>Close</span></button>{$message}</div>";
-					}
-					else{
-						echo apply_filters( "boros_newsletter_{$form_name}_form_message", $form['form_messages']['error'], 'error' );
-					}
-				}
-				elseif( $form['form_status'] == 'success' ){
-					if( $form['form_messages']['layout'] == 'bootstrap3' ){
-						echo "<div class='alert alert-success' role='alert'><button type='button' class='close' data-dismiss='alert'><span aria-hidden='true'>&times;</span><span class='sr-only'>Close</span></button>{$form['form_messages']['success']}</div>";
-					}
-					else{
-						echo apply_filters( "boros_newsletter_{$form_name}_form_message", $form['form_messages']['success'], 'success' );
-					}
-				}
-				else{
-					echo $form['form_messages']['blank'];
-				}
-			}
-			else{
-				echo $form['form_messages']['blank'];
-			}
+			if( $form['form_messages']['position'] == 'before' ){ echo $messages_html; }
 			
 			// exibir campos
 			foreach( $form['form_model'] as $key => $input ){
@@ -553,12 +523,13 @@ class BorosNewsletter {
 				}
 				$this->show_input($input);
 			}
-			
+			if( $form['form_messages']['position'] == 'after' ){ echo $messages_html; }
 			echo $form['form_options']['append'];
 			echo "</form>";
+			echo $form['form_options']['after'];
 		}
 		else {
-			echo "Este formulário (id:{$form_name}) não está registrado. É preciso registrar cada form no hook 'boros_newsletter_register_forms'";
+			echo "<div class='alert alert-danger' role='alert'>Este formulário (id: <strong>{$form_name}</strong>) não está registrado. É preciso registrar cada form no hook <code>boros_newsletter_register_forms</code></div>";
 		}
 	}
 	
@@ -574,18 +545,18 @@ class BorosNewsletter {
 	private function input_type_text( $input ){
 		$type = ( $input['db_column'] == 'person_email' ) ? 'email' : 'text';
 		$size = ( isset($input['size']) ) ? "input-{$input['size']}" : '';
-		if( $input['layout'] == 'inline' ){
+		if( $input['form_type'] == 'inline' ){
 			$value = $this->input_reload($input);
 			$html = "<input type='{$type}' name='{$input['name']}' class='form-control {$input['classes']['input_class']} {$size}' id='{$input['id']}' placeholder='{$input['placeholder']}' value='{$value}'>";
 			echo "<div class='form-group {$input['classes']['form_group_class']}'>";
-			if( $input['label'] != false ){ echo "<label class='sr-onlya {$input['classes']['label_class']}' for='{$input['id']}'>{$input['label']}</label>"; }
+			if( $input['label'] != false ){ echo "<label class='sr-only {$input['classes']['label_class']}' for='{$input['id']}'>{$input['label']}</label>"; }
 			$this->input_addon($html, $input);
 			echo "</div>\n";
 		}
-		elseif( $input['layout'] == 'normal' ){
+		elseif( $input['form_type'] == 'normal' ){
 			
 		}
-		elseif( $input['layout'] == 'horizontal' ){
+		elseif( $input['form_type'] == 'horizontal' ){
 			
 		}
 		else{
@@ -598,11 +569,12 @@ class BorosNewsletter {
 	 * 
 	 */
 	private function input_addon( $html, $input ){
-		if( isset($input['addon']) ){
+		$addon = boros_trim_array($input['addon']);
+		if( !empty($addon) ){
 			echo '<div class="input-group">';
-			if( isset($input['addon']['before']) ){echo "<span class='input-group-addon'>{$input['addon']['before']}</span>";}
+			if( !empty($input['addon']['before']) ){echo "<span class='input-group-addon'>{$input['addon']['before']}</span>";}
 			echo $html;
-			if( isset($input['addon']['after']) ){echo "<span class='input-group-addon'>{$input['addon']['after']}</span>";}
+			if( !empty($input['addon']['after']) ){echo "<span class='input-group-addon'>{$input['addon']['after']}</span>";}
 			echo "</div>\n";
 		}
 		elseif( isset($input['append_submit']) and $input['append_submit'] == true ){
@@ -728,27 +700,15 @@ class BorosNewsletter {
 				// total de páginas
 				$total_paginas = ceil( count($total_cadastros) / $per_page );
 				
-				/**
-				 * Definir as colunas extras de metadata.
-				 * É preciso montar um array modelo para o caso de mudanças na quantidade de colunas de metadatdos e registros computados, por exemplo ao adicionar uma coluna 'modelo', 
-				 * não exisitá diferenças entre a quantidade de headers(<th>) e dados exibidos <td>
-				 * 
-				 */
-				$this->form_model = borosnews_config();
-				$metadatas = array();
-				$metadata_th = '';
-				
-				/**
-				 * Filtrar as colunas de metadata, caso não deseje que alguma infomação não seja recuperada
-				 * 
-				 */
-				$exclude_metadata_column = apply_filters( 'boros_newsletter_show_metadata_columns', array() );
-				foreach( $this->form_model as $item => $attr ){
-					if( $attr['db_column'] == 'person_metadata' and !in_array( $item, $exclude_metadata_column ) ){
-						$metadatas[] = $item;
-						$metadata_th .= "<th>{$attr['label']}</th>";
-					}
-				}
+				$columns = $this->get_admin_page_columns();
+				//$metadatas = array();
+				//$metadata_th = '';
+				//foreach( $this->form_model as $item => $attr ){
+				//	if( $attr['db_column'] == 'person_metadata' and !in_array( $item, $exclude_metadata_column ) ){
+				//		$metadatas[] = $item;
+				//		$metadata_th .= "<th>{$attr['label']}</th>";
+				//	}
+				//}
 			?>
 			<h3>Dados cadastrados:</h3>
 			
@@ -756,69 +716,57 @@ class BorosNewsletter {
 				<thead>
 					<tr>
 						<th class="check-column"></th>
-						<th class="check-column">ID</th>
-						<th>E-mail</th>
-						<th>Nome</th>
-						<?php echo $metadata_th; ?>
-						<th>Data</th>
+						<?php foreach( $columns as $key => $col ){
+							echo "<th>{$col['label']}</th>";
+						}
+						?>
 					</tr>
 				</thead>
 				<tfoot>
 					<tr>
 						<th class="check-column"></th>
-						<th class="check-column">ID</th>
-						<th>E-mail</th>
-						<th>Nome</th>
-						<?php echo $metadata_th; ?>
-						<th>Data</th>
+						<?php foreach( $columns as $key => $col ){
+							echo "<th>{$col['label']}</th>";
+						}
+						?>
 					</tr>
 				</tfoot>
 			<?php
+			add_filter( 'boros_newsletter_admin_page_input_person_date', array($this, 'date_filter') );
+			$i = 0;
 			foreach( $cadastros as $cad ){
 				$args = array(
 					'newsletter_action' => 'remove',
 					'person_id' => $cad['person_id'],
 				);
-				ob_start();
+				$tr_class = ($c++%2==1) ? '' : 'alternate';
 			?>
-				<tr>
-					<td><a href="<?php echo add_query_arg( $args ); ?>" class="newsletter_remove_btn">Remover</a></td>
-					<td class="check-column"><?php echo $cad['person_id']; ?></td>
-					<td><?php echo $cad['person_email']; ?></td>
-					<td><?php echo $cad['person_name']; ?></td>
+				<tr class="<?php echo $tr_class; ?>">
+					<td><a href="<?php echo add_query_arg( $args ); ?>" class="newsletter_remove_btn" title="ID: <?php echo $cad['person_id']; ?>">Remover</a></td>
 					<?php
-					// pode haver diferença entre a quantidade registrada de dados e as colunas exigidas - ver comentário mais acima, assim certifica-se que está sendo exibido apenas os dados pedidos
-					$saved_metadatas = maybe_unserialize($cad['person_metadata']);
-					foreach( $metadatas as $metadata ){
-						// lidar com valores vazios - entradas antigas de antes de adicionar novos metas, ou quando aceita valores vazios
-						$meta = ( isset($saved_metadatas[$metadata]) ) ? $saved_metadatas[$metadata] : '';
-						// caso tenha sido configurado uma function de filtro de output, aplicar aqui:
-						if( isset($this->form_model[$metadata]['admin_output']) ){
-							$meta = call_user_func( $this->form_model[$metadata]['admin_output'], $meta );
+					$metadatas = maybe_unserialize($cad['person_metadata']);
+					foreach( $columns as $key => $col ){
+						if( $col['type'] == 'metadata' ){
+							$val = '';
+							if( isset($metadatas[$key]) ){
+								$val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $metadatas[$key] );
+							}
+							echo "<td>{$val}</td>";
 						}
-						echo "<td>{$meta}</td>";
+						else{
+							$val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $cad[$key] );
+							echo "<td>{$val}</td>";
+						}
 					}
 					?>
-					<td>
-						<?php echo ( $cad['person_date'] != '0000-00-00 00:00:00' ) ? mysql2date('d\/m\/Y', $cad['person_date']) : 'Sem data'; ?>
-					</td>
 				</tr>
-			<?php
-				$row = ob_get_contents();
-				ob_end_clean();
-				/**
-				 * Filtro para verificar se é preciso pular alguma linha conforme os dados registrados
-				 * 
-				 */
-				$skip_row = apply_filters( 'boros_newsletter_show_skip_row', false, $saved_metadatas );
-				if( $skip_row === false ){
-					echo $row;
-				}
+				<?php
+				$i++;
 			}
 			?>
 			</table>
 			<div class="tablenav form-table" style="height:auto;">
-				<form action="<?php echo get_bloginfo('wpurl') . '/wp-admin/admin.php'; ?>">
+				<form action="<?php echo get_bloginfo('wpurl') . '/wp-admin/admin.php'; ?>" method="get">
 					Resultados por página:
 					<input type="hidden" name="page" value="newsletter_controls" />
 					<input type="hidden" name="pg" value="1" />
@@ -850,6 +798,37 @@ class BorosNewsletter {
 			</div>
 		</div><!-- fim de WRAP -->
 		<?php
+	}
+	
+	/**
+	 * Montar as colunas do admin, mesclando metadatas de múltiplos forms
+	 * 
+	 */
+	private function get_admin_page_columns(){
+		$columns = array(
+			'person_email' => array(
+				'label' => 'E-mail', 
+				'type' => 'column',
+			), 
+			'person_name' => array(
+				'label' => 'Nome', 
+				'type' => 'column',
+			), 
+			'ipt_sobrenome' => array(
+				'label' => 'Sobrenome', 
+				'type' => 'metadata',
+			), 
+			'person_date' => array(
+				'label' => 'Data', 
+				'type' => 'column',
+			), 
+		);
+		return apply_filters( 'boros_newsletter_admin_page_columns', $columns );
+	}
+	
+	function date_filter( $date ){
+		$new_date = $date != '0000-00-00 00:00:00' ? mysql2date('d\/m\/Y \à\s h:m:s', $date) : 'Sem data';
+		return $new_date;
 	}
 	
 	/**
