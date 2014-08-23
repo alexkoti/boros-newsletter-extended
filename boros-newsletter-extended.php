@@ -150,7 +150,10 @@ class BorosNewsletter {
 					'before' => '',
 					'after' => '',
 				),
+				'size' => '',
+				'append_submit' => false,
 			),
+			/**
 			'ipt_nome' => array(
 				'db_column' => 'person_name',
 				'type' => 'text',
@@ -170,6 +173,8 @@ class BorosNewsletter {
 					'before' => '',
 					'after' => '',
 				),
+				'size' => '',
+				'append_submit' => false,
 			),
 			'ipt_sobrenome' => array(
 				'db_column' => 'person_metadata',
@@ -190,6 +195,7 @@ class BorosNewsletter {
 					'before' => '',
 					'after' => '',
 				),
+				'size' => 'sm',
 				'append_submit' => false,
 			),
 			'submit' => array(
@@ -208,7 +214,9 @@ class BorosNewsletter {
 					'before' => '',
 					'after' => '',
 				),
+				'size' => '',
 			),
+			/**/
 		)
 	);
 	
@@ -262,6 +270,8 @@ class BorosNewsletter {
 	
 	/**
 	 * Mesclar a configuração enviada com os valores padrões.
+	 * 
+	 * @todo criar uma forma de adicionar o submit caso não tenha sido declarado e/ou quando nenhum dos elementos foi definido
 	 * 
 	 */
 	private function set_form_config( $custom_config ){
@@ -702,14 +712,6 @@ class BorosNewsletter {
 				$total_paginas = ceil( count($total_cadastros) / $per_page );
 				
 				$columns = $this->get_admin_page_columns();
-				//$metadatas = array();
-				//$metadata_th = '';
-				//foreach( $this->form_model as $item => $attr ){
-				//	if( $attr['db_column'] == 'person_metadata' and !in_array( $item, $exclude_metadata_column ) ){
-				//		$metadatas[] = $item;
-				//		$metadata_th .= "<th>{$attr['label']}</th>";
-				//	}
-				//}
 			?>
 			<h3>Dados cadastrados:</h3>
 			
@@ -810,15 +812,15 @@ class BorosNewsletter {
 			'person_email' => array(
 				'label' => 'E-mail', 
 				'type' => 'column',
-			), 
+			),
 			'person_name' => array(
 				'label' => 'Nome', 
 				'type' => 'column',
-			), 
+			),
 			'ipt_sobrenome' => array(
 				'label' => 'Sobrenome', 
 				'type' => 'metadata',
-			), 
+			),
 			'person_date' => array(
 				'label' => 'Data', 
 				'type' => 'column',
@@ -829,22 +831,26 @@ class BorosNewsletter {
 	
 	private function get_download_columns(){
 		$columns = array(
+			'person_id' => array(
+				'label' => 'ID', 
+				'type' => 'column',
+			),
 			'person_email' => array(
 				'label' => 'E-mail', 
 				'type' => 'column',
-			), 
+			),
 			'person_name' => array(
 				'label' => 'Nome', 
 				'type' => 'column',
-			), 
+			),
 			'ipt_sobrenome' => array(
 				'label' => 'Sobrenome', 
 				'type' => 'metadata',
-			), 
+			),
 			'person_date' => array(
 				'label' => 'Data formatada', 
 				'type' => 'column',
-			), 
+			),
 			'person_date_original' => array(
 				'label' => 'Data original', 
 				'type' => 'column',
