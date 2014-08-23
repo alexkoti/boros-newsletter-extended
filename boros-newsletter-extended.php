@@ -236,6 +236,7 @@ class BorosNewsletter {
 		// actions
 		add_action( 'admin_menu', array($this, 'admin_page') );
 		add_action( 'admin_init', array($this, 'admin_remove_user') );
+		add_action( 'wp_ajax_boros_newsletter_download', array($this, 'boros_newsletter_download') ); // admin
 		
 		// continuar apenas caso exista algum form registrado
 		$custom_config = apply_filters( 'boros_newsletter_set_config', array() );
@@ -644,7 +645,7 @@ class BorosNewsletter {
 		<div class="wrap">
 			<h2><?php echo bloginfo('blogname'); ?> - Newsletter</h2>
 			
-			<form id="export_data" action="<?php echo self_url(); ?>" method="post">
+			<form id="export_data" action="<?php echo admin_url('admin-ajax.php'); ?>" method="post">
 				<h3>Exportar dados:</h3>
 				<p>
 					Data inicio: <br />
@@ -658,7 +659,7 @@ class BorosNewsletter {
 					<select name="end_mes" class="ipt_select_mes"><?php decimal_options_list(1, 12, date('m'), 2); ?></select>
 					<select name="end_ano" class="ipt_select_ano"><?php decimal_options_list(2011, 2020, date('Y'), 0); ?></select>
 				</p>
-				<input type="hidden" value="1" name="download_newsletter" />
+				<input type="hidden" name="action" value="boros_newsletter_download" />
 				<input type="submit" value="Exportar" class="button-primary" name="submit_newsletter" />
 			</form>
 			
@@ -681,7 +682,7 @@ class BorosNewsletter {
 				$offset = ($pg - 1) * $per_page;
 				
 				global $wpdb, $post;
-				$tabela = $wpdb->prefix . 'newsletter';
+				$tabela = $wpdb->prefix . self::$table_name;
 				
 				//total de cadastros
 				$total_cadastros = $wpdb->get_results("
@@ -826,9 +827,115 @@ class BorosNewsletter {
 		return apply_filters( 'boros_newsletter_admin_page_columns', $columns );
 	}
 	
+	private function get_download_columns(){
+		$columns = array(
+			'person_email' => array(
+				'label' => 'E-mail', 
+				'type' => 'column',
+			), 
+			'person_name' => array(
+				'label' => 'Nome', 
+				'type' => 'column',
+			), 
+			'ipt_sobrenome' => array(
+				'label' => 'Sobrenome', 
+				'type' => 'metadata',
+			), 
+			'person_date' => array(
+				'label' => 'Data formatada', 
+				'type' => 'column',
+			), 
+			'person_date_original' => array(
+				'label' => 'Data original', 
+				'type' => 'column',
+			), 
+		);
+		return apply_filters( 'boros_newsletter_download_columns', $columns );
+	}
+	
 	function date_filter( $date ){
 		$new_date = $date != '0000-00-00 00:00:00' ? mysql2date('d\/m\/Y \à\s h:m:s', $date) : 'Sem data';
 		return $new_date;
+	}
+	
+	function boros_newsletter_download(){
+		if( empty($this->forms) ){
+			die('sem dados para exportar');
+		}
+		else{
+			// load excel library
+			require 'php-excel.class.php';
+
+			extract( $_POST );
+			$start_date = "{$start_ano}-{$start_mes}-{$start_dia}";
+			$end_date = "{$end_ano}-{$end_mes}-{$end_dia}";
+
+			// query dos dados
+			global $wpdb, $post;
+			$tabela = $wpdb->prefix . self::$table_name;
+
+			$start_date = "{$start_ano}-{$start_mes}-{$start_dia}";
+			$end_date = "{$end_ano}-{$end_mes}-{$end_dia}";
+			
+			$columns = $this->get_download_columns();
+			
+			$query = "
+				SELECT  *
+				FROM {$tabela}
+				WHERE person_date >= '{$start_date} 00:00:00'
+				AND person_date <= '{$end_date} 23:59:59'
+				ORDER BY person_date ASC
+			";
+			$query = apply_filters( 'boros_newsletter_download_query', $query, $tabela, $start_date, $end_date );
+			$cadastros = $wpdb->get_results($query, ARRAY_A);
+			
+			if( $cadastros ){
+				$data = array();
+				$headers = array();
+				foreach( $columns as $key => $col ){
+					$headers[] = $col['label'];
+				}
+				$data[] = $headers;
+			}
+			else{
+				return false;
+				die();
+			}
+			
+			add_filter( 'boros_newsletter_download_input_person_date', array($this, 'date_filter') );
+			foreach( $cadastros as $cad ){
+				$values = array();
+				$metadatas = maybe_unserialize($cad['person_metadata']);
+				foreach( $columns as $key => $col ){
+					if( $col['type'] == 'metadata' ){
+						$val = '';
+						if( isset($metadatas[$key]) ){
+							$val = apply_filters( "boros_newsletter_download_input_{$key}", $metadatas[$key] );
+						}
+						$values[] = $val;
+					}
+					elseif( $key == 'person_date_original' ){
+						$values[] = $cad['person_date'];
+					}
+					else{
+						$val = apply_filters( "boros_newsletter_download_input_{$key}", $cad[$key] );
+						$values[] = $val;
+					}
+				}
+				$data[] = array_values($values);
+			}
+			//pre($data); exit();
+			
+			// generate file (constructor parameters are optional)
+			$site_name = get_bloginfo('name', 'display');
+			$site_slug = sanitize_title($site_name);
+			$xls = new Excel_XML('UTF-8', false, "{$site_name} Emails - {$start_dia}-{$start_mes}-{$start_ano}_{$end_dia}-{$end_mes}-{$end_ano}");
+			$xls->addArray($data);
+			$xls->generateXML("{$site_slug}_emails_{$start_dia}-{$start_mes}-{$start_ano}_{$end_dia}-{$end_mes}-{$end_ano}");
+			
+			exit();
+		}
+		die();
 	}
 	
 	/**
