@@ -26,6 +26,9 @@ License: GPL2
  * - Página de configuração inicial: escolher nome e criar tabela
  * 
  * 
+ * @link http://www.tutorialrepublic.com/twitter-bootstrap-tutorial/bootstrap-forms.php
+ * @link http://getbootstrap.com/css/#forms
+ * 
  */
 
 
