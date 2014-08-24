@@ -14,7 +14,11 @@ License: GPL2
 /*
  * 
  * @TODO:
+ * - integrar akismet
+ * - criar os outputs dos outros tipos de forms, assim como de outros tipos de campos como select, checkbox e radio
+ * - adicionar nonces, para dificultar spam
  * - deixar modelos criados de form inline, horizontal e normal(um embaixo do outro)
+ * - campos condicionais
  * - AJAX FRONTEND >> submit com mensagens de sucesso ou erro + form de novo
  * - AJAX ADMIN >>> remover/editar entrada
  * - Integrar o js no plugin
@@ -960,9 +964,7 @@ class BorosNewsletter {
 	}
 	
 	/**
-	 * Verificar se tabela de newsletter já existe, e caso contrário criá-la.
-	 * 
-	 * @todo usar esse método apenas no momento de consultar ou salvar dados, deixando o carregamento dde páginas simples sem este trecho.
+	 * Verificar se tabela de newsletter já existe, e caso contrário criá-la. Utilizado apenas na ativação do plugin.
 	 * 
 	 */
 	static function check_table(){
