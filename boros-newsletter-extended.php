@@ -14,45 +14,17 @@ License: GPL2
 /*
  * 
  * @TODO:
- * - REVISAR A POSSIBILIDADE DE USAR BOROS ELEMENTS
- * - Label opcional
- * - Rever melhorias na exibição do select de estados
- * - Melhorar templates
- * - AJAX FRONTEND!!!
+ * - deixar modelos criados de form inline, horizontal e normal(um embaixo do outro)
+ * - AJAX FRONTEND >> submit com mensagens de sucesso ou erro + form de novo
  * - AJAX ADMIN >>> remover/editar entrada
- * - Melhorar a configuração para integrar os campos a serem gravados, listados no admin e download, deixando integrado.
- * - Criar mini-templates de inputs para form-elements
- * - Permitir diversos forms em uma só page.
  * - Integrar o js no plugin
- * - Unificar as variáveis do nome da tabela
- * - metodo add_data() que possa ser chamado diretamente por outros plugins/functions, por exemplo para salvar o email do commenter
  * - Verificar as datas pedidas para download, validar período
- * 
- * 
- * ROADMAP v2
  * - Página de configuração inicial: escolher nome e criar tabela
  * 
  * 
  */
 
 
-
-/**
- * TESTES
- * 
- */
-//add_action( 'wp_footer', 'newsletter_test' );
-//add_action( 'admin_footer', 'newsletter_test' );
-function newsletter_test(){
-	$newsletter = BorosNewsletter::init();
-	pre($newsletter, 'BorosNewsletter');
-	
-	pre(get_class_vars('BorosNewsletter'), 'BorosNewsletter get_class_vars');
-	pre(get_object_vars($newsletter), 'BorosNewsletter get_object_vars');
-	
-	//global $wpdb;
-	//pre($wpdb, 'wpdb');
-}
 
 /**
  * Hook de ativação, para criar a tabela, se necessário
@@ -73,7 +45,7 @@ class BorosNewsletter {
 	 * Versão
 	 * 
 	 */
-	var $version = '1.0';
+	static $version = '1.0';
 	
 	/**
 	 * Sinaliza se o plugin Boros Elements está ativado, pois depende das funcões de formulário deste.
@@ -265,7 +237,7 @@ class BorosNewsletter {
 	private function init_table(){
 		global $wpdb;
 		$table_name = self::$table_name;
-		$wpdb->$table_name = $wpdb->prefix . self::$table_name;
+		$wpdb->$table_name = self::new_table_name();
 	}
 	
 	/**
@@ -610,7 +582,7 @@ class BorosNewsletter {
 	}
 	
 	private function custom_input_type( $input ){
-		pre( $input, 'custom_input_type', false );
+		//pre( $input, 'custom_input_type', false );
 		$html = '';
 		echo apply_filters( "boros_newsletter_custom_input_{$input['type']}", $html, $input );
 	}
@@ -634,6 +606,50 @@ class BorosNewsletter {
 			global $wpdb;
 			$person_id = (int)$_GET['person_id'];
 			$wpdb->query( $wpdb->prepare("DELETE FROM {$wpdb->newsletter} WHERE person_id = %d", $person_id ) );
+		}
+	}
+	
+	/**
+	 * Adicionar diretamente usuário novo ou atualizar dados caso já exista. Será usado como callbacks de outras functions.
+	 * Na primeira versão existe um bloco que remove o usuário da lista caso não tenha sido preenchido metadadtas. Verificar
+	 * se ainda existe a necessidade disso.
+	 * 
+	 */
+	function append_user( $data_array ){
+		// verificar se já existe na base
+		global $wpdb;
+		$person = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}newsletter WHERE person_email = '{$data_array['person_email']}'");
+		$table_name = self::new_table_name();
+		
+		// atualizar dados caso a pessoa já exista
+		if( $person ){
+			$oldmeta = maybe_unserialize( $person->person_metadata );
+			
+			// verificar se é igual, e atualizar
+			if( $data_array['person_metadata'] != $oldmeta ){
+				if( !empty($oldmeta) )
+					$data_array['person_metadata'] = maybe_serialize($data_array['person_metadata'] + $oldmeta);
+				
+				if( !is_serialized( $data_array['person_metadata'] ) ){
+					$data_array['person_metadata'] = maybe_serialize($data_array['person_metadata']);
+				}
+				
+				if( !empty($data_array['person_metadata']) ){
+					$where = array(
+						'person_email' => $data_array['person_email']
+					);
+					$wpdb->update( $wpdb->prefix . 'newsletter', $data_array, $where );
+				}
+			}
+		}
+		// adicionar novo registro
+		else{
+			if( !empty($data_array['person_metadata']) ){
+				if( !is_serialized( $data_array['person_metadata'] ) ){
+					$data_array['person_metadata'] = maybe_serialize($data_array['person_metadata']);
+				}
+				$wpdb->insert( $table_name, $data_array );
+			}
 		}
 	}
 	
@@ -692,7 +708,7 @@ class BorosNewsletter {
 				$offset = ($pg - 1) * $per_page;
 				
 				global $wpdb, $post;
-				$tabela = $wpdb->prefix . self::$table_name;
+				$tabela = self::new_table_name();
 				
 				//total de cadastros
 				$total_cadastros = $wpdb->get_results("
@@ -742,7 +758,7 @@ class BorosNewsletter {
 					'newsletter_action' => 'remove',
 					'person_id' => $cad['person_id'],
 				);
-				$tr_class = ($c++%2==1) ? '' : 'alternate';
+				$tr_class = ($i++%2==1) ? '' : 'alternate';
 			?>
 				<tr class="<?php echo $tr_class; ?>">
 					<td><a href="<?php echo add_query_arg( $args ); ?>" class="newsletter_remove_btn" title="ID: <?php echo $cad['person_id']; ?>">Remover</a></td>
@@ -764,7 +780,6 @@ class BorosNewsletter {
 					?>
 				</tr>
 				<?php
-				$i++;
 			}
 			?>
 			</table>
@@ -878,7 +893,7 @@ class BorosNewsletter {
 
 			// query dos dados
 			global $wpdb, $post;
-			$tabela = $wpdb->prefix . self::$table_name;
+			$tabela = self::new_table_name();
 
 			$start_date = "{$start_ano}-{$start_mes}-{$start_dia}";
 			$end_date = "{$end_ano}-{$end_mes}-{$end_dia}";
@@ -952,9 +967,9 @@ class BorosNewsletter {
 	 */
 	static function check_table(){
 		global $wpdb;
-		$new_table_name = $wpdb->prefix . self::$table_name;
+		$new_table_name = self::new_table_name();
 		
-		// criar tabela se não existir e caso esteja habilitado no painel de controle
+		// criar tabela se não existir
 		if( $wpdb->get_var("SHOW TABLES LIKE '{$new_table_name}'") != $new_table_name ){
 			if( !empty ($wpdb->charset) ){
 				$charset_collate = "DEFAULT CHARACTER SET {$wpdb->charset}";
@@ -978,6 +993,11 @@ class BorosNewsletter {
 			require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 			dbDelta( $sql );
 		}
+	}
+	
+	function new_table_name(){
+		global $wpdb;
+		return $wpdb->prefix . self::$table_name;
 	}
 }
 
