@@ -1,8 +1,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Boros Newsletter Extended\n"
-"POT-Creation-Date: 2014-08-26 22:22-0300\n"
-"PO-Revision-Date: 2014-08-26 22:22-0300\n"
+"POT-Creation-Date: 2014-08-27 11:53-0300\n"
+"PO-Revision-Date: 2014-08-27 11:54-0300\n"
 "Last-Translator: Alex Koti <alexkoti@gmail.com>\n"
 "Language-Team: Alex Koti <alexkoti@gmail.com>\n"
 "Language: en\n"
@@ -15,32 +15,35 @@ msgstr ""
 "X-Poedit-KeywordsList: __;_e\n"
 "X-Poedit-SearchPath-0: ..\n"
 
-#: ../boros-newsletter-extended.php:304
+#: ../boros-newsletter-extended.php:305
 #, php-format
 msgid "The %s field needs to be filled."
 msgstr "O campo %s precisa ser preenchido."
 
-#: ../boros-newsletter-extended.php:312
+#: ../boros-newsletter-extended.php:313
 #, php-format
 msgid "The %s field must be filled in correctly."
 msgstr "O campo %s precisa ser preenchido corretamente."
 
-#: ../boros-newsletter-extended.php:322
+#: ../boros-newsletter-extended.php:323
 msgid "This is not valid input."
 msgstr "Este não é uma entrada válida."
 
-#: ../boros-newsletter-extended.php:334
-msgid "Email already registered."
-msgstr "E-mail já registrado."
+#: ../boros-newsletter-extended.php:335
+msgid "Your e-mail is already in our mailing list."
+msgstr "E-mail já cadastrado."
 
-#: ../boros-newsletter-extended.php:338
+#: ../boros-newsletter-extended.php:339
 msgid "This is not a valid email address."
 msgstr "Email não é válido."
 
-#: ../boros-newsletter-extended.php:348
+#: ../boros-newsletter-extended.php:349
 msgid "This is not a valid integer."
 msgstr "Este não é um número válido."
 
-#: ../boros-newsletter-extended.php:359
+#: ../boros-newsletter-extended.php:360
 msgid "This is not a valid state."
 msgstr "Este não é um estado válido."
+
+#~ msgid "Email already registered."
+#~ msgstr "E-mail já registrado"

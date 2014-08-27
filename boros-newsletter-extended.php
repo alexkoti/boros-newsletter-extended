@@ -14,6 +14,7 @@ License: GPL2
 /*
  * 
  * @TODO:
+ * - poder configurar mensagens de erro para cada tipo de validação, e não apenas para cada input
  * - integrar akismet
  * - criar os outputs dos outros tipos de forms, assim como de outros tipos de campos como select, checkbox e radio
  * - adicionar nonces, para dificultar spam
@@ -246,7 +247,7 @@ class BorosNewsletter {
 	private function init_table(){
 		global $wpdb;
 		$table_name = self::$table_name;
-		$wpdb->$table_name = self::new_table_name();
+		$wpdb->$table_name = self::table_name();
 	}
 	
 	/**
@@ -283,6 +284,7 @@ class BorosNewsletter {
 	 * 
 	 */
 	private function proccess_data(){
+		$new_table_name = self::table_name();
 		if( isset($_POST['form_type']) and $_POST['form_type'] == 'boros_newsletter_form' ){
 			if( isset($_POST['form_name']) and isset($this->forms[$_POST['form_name']]) ){
 				$form_name = $_POST['form_name'];
@@ -329,9 +331,9 @@ class BorosNewsletter {
 									if( filter_var( $value, FILTER_VALIDATE_EMAIL) ){
 										// verificar se já existe na base
 										global $wpdb;
-										$email = $wpdb->get_row("SELECT person_email FROM {$wpdb->prefix}newsletter WHERE person_email = '{$value}'");
+										$email = $wpdb->get_row("SELECT person_email FROM {$new_table_name} WHERE person_email = '{$value}'");
 										if( $email ){
-											$this->set_error( $form_name, $key, __('Email already registered.', 'boros-newsletter-extended') );
+											$this->set_error( $form_name, $key, __('Your e-mail is already in our mailing list.', 'boros-newsletter-extended') );
 										}
 									}
 									else{
@@ -397,7 +399,7 @@ class BorosNewsletter {
 					}
 					
 					//pre($data_array, 'data_array');
-					$wpdb->insert( $wpdb->prefix . 'newsletter', $data_array );
+					$wpdb->insert( $new_table_name, $data_array );
 					$this->forms[$form_name]['form_status'] = 'success';
 				}
 				else{
@@ -629,8 +631,9 @@ class BorosNewsletter {
 	function append_user( $data_array ){
 		// verificar se já existe na base
 		global $wpdb;
-		$person = $wpdb->get_row("SELECT * FROM {$wpdb->prefix}newsletter WHERE person_email = '{$data_array['person_email']}'");
-		$table_name = self::new_table_name();
+		$new_table_name = self::table_name();
+		$person = $wpdb->get_row("SELECT * FROM {$new_table_name} WHERE person_email = '{$data_array['person_email']}'");
+		$table_name = self::table_name();
 		
 		// atualizar dados caso a pessoa já exista
 		if( $person ){
@@ -649,7 +652,7 @@ class BorosNewsletter {
 					$where = array(
 						'person_email' => $data_array['person_email']
 					);
-					$wpdb->update( $wpdb->prefix . 'newsletter', $data_array, $where );
+					$wpdb->update( $new_table_name, $data_array, $where );
 				}
 			}
 		}
@@ -719,7 +722,7 @@ class BorosNewsletter {
 				$offset = ($pg - 1) * $per_page;
 				
 				global $wpdb, $post;
-				$tabela = self::new_table_name();
+				$tabela = self::table_name();
 				
 				//total de cadastros
 				$total_cadastros = $wpdb->get_results("
@@ -904,7 +907,7 @@ class BorosNewsletter {
 
 			// query dos dados
 			global $wpdb, $post;
-			$tabela = self::new_table_name();
+			$tabela = self::table_name();
 
 			$start_date = "{$start_ano}-{$start_mes}-{$start_dia}";
 			$end_date = "{$end_ano}-{$end_mes}-{$end_dia}";
@@ -972,22 +975,41 @@ class BorosNewsletter {
 	
 	/**
 	 * Verificar se tabela de newsletter já existe, e caso contrário criá-la. Utilizado apenas na ativação do plugin.
+	 * Possui verificação de multisite.
 	 * 
+	 * @link http://shibashake.com/wordpress-theme/write-a-plugin-for-wordpress-multi-site
 	 */
-	static function check_table(){
+	static function check_table( $networkwide ){
 		global $wpdb;
-		$new_table_name = self::new_table_name();
+		
+		if( function_exists('is_multisite') && is_multisite() && get_option('boros_newsletter_multisite_single_table') == false ){
+			if($networkwide){
+				$old_blog = $wpdb->blogid;
+				// Get all blog ids
+				$blogids = $wpdb->get_col("SELECT blog_id FROM {$wpdb->blogs}");
+				foreach( $blogids as $blog_id ){
+					switch_to_blog( $blog_id );
+					self::create_table();
+				}
+				switch_to_blog( $old_blog );
+				return;
+			}   
+		} 
+		self::create_table();
+	}
+	
+	static function create_table(){
+		global $wpdb;
+		$new_table_name = self::table_name();
 		
 		// criar tabela se não existir
 		if( $wpdb->get_var("SHOW TABLES LIKE '{$new_table_name}'") != $new_table_name ){
 			if( !empty ($wpdb->charset) ){
 				$charset_collate = "DEFAULT CHARACTER SET {$wpdb->charset}";
 			}
-			
 			if( !empty ($wpdb->collate) ){
 				$charset_collate .= " COLLATE {$wpdb->collate}";
 			}
-			
 			$sql = "
 			CREATE TABLE IF NOT EXISTS `{$new_table_name}` (
 				`person_id` int(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -1004,9 +1026,20 @@ class BorosNewsletter {
 		}
 	}
 	
-	function new_table_name(){
+	/**
+	 * Definir o nome da tabela para gravar, com opção de escolher uma única no caso de multisite.
+	 * 
+	 */
+	static function table_name(){
 		global $wpdb;
-		return $wpdb->prefix . self::$table_name;
+		
+		if( get_option('boros_newsletter_multisite_single_table') == true ){
+			$primary_site_prefix = $wpdb->get_blog_prefix(1);
+			return $primary_site_prefix . self::$table_name;
+		}
+		else{
+			return $wpdb->prefix . self::$table_name;
+		}
 	}
 }
 
