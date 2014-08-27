@@ -214,6 +214,8 @@ class BorosNewsletter {
 	}
 	
 	private function __construct(){
+		load_plugin_textdomain( 'boros-newsletter-extended', false, basename( dirname( __FILE__ ) ) . '/languages' );
+		
 		// verificar dependência
 		$this->dependecy_check();
 		
@@ -299,7 +301,7 @@ class BorosNewsletter {
 				 */
 				foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
 					if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) and $input['db_column'] != 'skip' ){
-						$this->set_error( $form_name, $key, "O campo {$input['label']} precisa ser preenchido." );
+						$this->set_error( $form_name, $key, sprintf(__('The %s field needs to be filled.', 'boros-newsletter-extended'), $input['label']) );
 						$this->set_value( $form_name, $key, $input['std']);
 					}
 					else{
@@ -307,7 +309,7 @@ class BorosNewsletter {
 						
 						// preenchido, porém é valor padrão e não aceito
 						if( ($input['accept_std'] == false) and ($value == $input['std']) and $input['db_column'] != 'skip' ){
-							$this->set_error( $form_name, $key, "O campo {$input['label']} precisa ser preenchido corretamente." );
+							$this->set_error( $form_name, $key, sprintf(__('The %s field must be filled in correctly.', 'boros-newsletter-extended'), $input['label']) );
 						}
 						else{
 							switch( $input['validate'] ){
@@ -317,7 +319,7 @@ class BorosNewsletter {
 										$this->set_value( $form_name, $key, $value);
 									}
 									else{
-										$this->set_error( $form_name, $key, "{$label} não é string válida." );
+										$this->set_error( $form_name, $key, __('This is not valid input.', 'boros-newsletter-extended') );
 										$this->set_value( $form_name, $key, $input['std']);
 									}
 									break;
@@ -329,11 +331,11 @@ class BorosNewsletter {
 										global $wpdb;
 										$email = $wpdb->get_row("SELECT person_email FROM {$wpdb->prefix}newsletter WHERE person_email = '{$value}'");
 										if( $email ){
-											$this->set_error( $form_name, $key, "E-mail já cadastrado." );
+											$this->set_error( $form_name, $key, __('Email already registered.', 'boros-newsletter-extended') );
 										}
 									}
 									else{
-										$this->set_error( $form_name, $key, "{$label} não é email válido : {$value}." );
+										$this->set_error( $form_name, $key, __('This is not a valid email address.', 'boros-newsletter-extended') );
 									}
 									$this->set_value( $form_name, $key, $value);
 									break;
@@ -343,7 +345,7 @@ class BorosNewsletter {
 										$this->set_value( $form_name, $key, $value);
 									}
 									else{
-										$this->set_error( $form_name, $key, "{$label} não é um inteiro válido" );
+										$this->set_error( $form_name, $key, __('This is not a valid integer.', 'boros-newsletter-extended') );
 										$this->set_value( $form_name, $key, $input['std']);
 									}
 									break;
@@ -354,7 +356,7 @@ class BorosNewsletter {
 										$this->set_value( $form_name, $key, $value);
 									}
 									else{
-										$this->set_error( $form_name, $key, "{$value} não é um estado válido." );
+										$this->set_error( $form_name, $key, __('This is not a valid state.', 'boros-newsletter-extended') );
 										$this->set_value( $form_name, $key, $input['std']);
 									}
 									break;
@@ -409,12 +411,14 @@ class BorosNewsletter {
 	}
 	
 	/**
-	 * Registrar erros no input e no form
+	 * Registrar erros no input e no form.
+	 * Será exibida a mensagem de erro configurada para o campo, caso contrário será usado o padrão enviado.
 	 * 
 	 */
-	private function set_error( $form_name, $key, $error ){
-		$this->forms[$form_name]['form_model'][$key]['error'] = $error;
-		$this->forms[$form_name]['form_errors'][$key] = $error;
+	private function set_error( $form_name, $key, $default_message ){
+		$message = isset($this->forms[$form_name]['form_model'][$key]['error_message']) ? $this->forms[$form_name]['form_model'][$key]['error_message'] : $default_message;
+		$this->forms[$form_name]['form_model'][$key]['error'] = $message;
+		$this->forms[$form_name]['form_errors'][$key] = $message;
 	}
 	
 	/**
