@@ -15,6 +15,7 @@ License: GPL2
  * 
  * @TODO:
  * - poder configurar mensagens de erro para cada tipo de validação, e não apenas para cada input
+ * - adicionar campo de opções, para usar uma única tabela em multisite. Atualmente a opção está em admin_page do plugin do job. Verificar a adição de adicionar como opção da rede.
  * - integrar akismet
  * - criar os outputs dos outros tipos de forms, assim como de outros tipos de campos como select, checkbox e radio
  * - adicionar nonces, para dificultar spam
