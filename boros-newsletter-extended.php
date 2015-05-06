@@ -299,74 +299,102 @@ class BorosNewsletter {
 				$this->forms[$form_name]['form_id'] = $_POST['form_id'];
 				
 				/**
+				 * Verificar spam
+				 * Na configuração do form, é possível escolher quais campos representam os valores que serão passados 
+				 * para o Akismet.
+				 * 
+				 */
+				$is_spam = false;
+				if( isset($this->forms[$form_name]['form_options']['akismet_fields']) ){
+					$akismet_fields = array(
+						'author'  => '',
+						'email'   => '',
+						'url'     => '',
+						'comment' => '',
+					);
+					foreach( $this->forms[$form_name]['form_options']['akismet_fields'] as $aksmt_key => $news_key ){
+						if( isset($_POST[$news_key]) ){
+							$akismet_fields[$aksmt_key] = $_POST[$news_key];
+						}
+					}
+					$is_spam = $this->check_spam( $form_name, $akismet_fields );
+					if( $is_spam == true ){
+						$this->set_error( $form_name, 'ipt_email', __('Your e-mail is identified as spam.', 'boros-newsletter-extended') );
+					}
+				}
+				
+				/**
 				 * Preparar os dados
 				 * 
 				 */
-				foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
-					if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) and $input['db_column'] != 'skip' ){
-						$this->set_error( $form_name, $key, sprintf(__('The %s field needs to be filled.', 'boros-newsletter-extended'), $input['label']) );
-						$this->set_value( $form_name, $key, $input['std']);
-					}
-					else{
-						$value = sanitize_text_field($_POST[$key]);
-						
-						// preenchido, porém é valor padrão e não aceito
-						if( ($input['accept_std'] == false) and ($value == $input['std']) and $input['db_column'] != 'skip' ){
-							$this->set_error( $form_name, $key, sprintf(__('The %s field must be filled in correctly.', 'boros-newsletter-extended'), $input['label']) );
+				// pular demais verificações caso seja identificado como spam.
+				if( $is_spam == false ){
+					foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
+						if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) and $input['db_column'] != 'skip' ){
+							$this->set_error( $form_name, $key, sprintf(__('The %s field needs to be filled.', 'boros-newsletter-extended'), $input['label']) );
+							$this->set_value( $form_name, $key, $input['std']);
 						}
 						else{
-							switch( $input['validate'] ){
-								case 'string':
-									$value = filter_var( $value, FILTER_SANITIZE_STRING);
-									if( $value == true ){
-										$this->set_value( $form_name, $key, $value);
-									}
-									else{
-										$this->set_error( $form_name, $key, __('This is not valid input.', 'boros-newsletter-extended') );
-										$this->set_value( $form_name, $key, $input['std']);
-									}
-									break;
-								
-								case 'email':
-									$value = filter_var($value, FILTER_SANITIZE_EMAIL);
-									if( filter_var( $value, FILTER_VALIDATE_EMAIL) ){
-										// verificar se já existe na base
-										global $wpdb;
-										$email = $wpdb->get_row("SELECT person_email FROM {$new_table_name} WHERE person_email = '{$value}'");
-										if( $email ){
-											$this->set_error( $form_name, $key, __('Your e-mail is already in our mailing list.', 'boros-newsletter-extended') );
+							$value = sanitize_text_field($_POST[$key]);
+							
+							// preenchido, porém é valor padrão e não aceito
+							if( ($input['accept_std'] == false) and ($value == $input['std']) and $input['db_column'] != 'skip' ){
+								$this->set_error( $form_name, $key, sprintf(__('The %s field must be filled in correctly.', 'boros-newsletter-extended'), $input['label']) );
+							}
+							else{
+								switch( $input['validate'] ){
+									case 'string':
+										$value = filter_var( $value, FILTER_SANITIZE_STRING);
+										if( $value == true ){
+											$this->set_value( $form_name, $key, $value);
 										}
-									}
-									else{
-										$this->set_error( $form_name, $key, __('This is not a valid email address.', 'boros-newsletter-extended') );
-									}
-									$this->set_value( $form_name, $key, $value);
-									break;
-								
-								case 'bool':
-									if( filter_var( $value, FILTER_VALIDATE_BOOLEAN) ){
+										else{
+											$this->set_error( $form_name, $key, __('This is not valid input.', 'boros-newsletter-extended') );
+											$this->set_value( $form_name, $key, $input['std']);
+										}
+										break;
+									
+									case 'email':
+										$value = filter_var($value, FILTER_SANITIZE_EMAIL);
+										if( filter_var( $value, FILTER_VALIDATE_EMAIL) ){
+											// verificar se já existe na base
+											global $wpdb;
+											$email = $wpdb->get_row("SELECT person_email FROM {$new_table_name} WHERE person_email = '{$value}'");
+											if( $email ){
+												$this->set_error( $form_name, $key, __('Your e-mail is already in our mailing list.', 'boros-newsletter-extended') );
+											}
+										}
+										else{
+											$this->set_error( $form_name, $key, __('This is not a valid email address.', 'boros-newsletter-extended') );
+										}
 										$this->set_value( $form_name, $key, $value);
-									}
-									else{
-										$this->set_error( $form_name, $key, __('This is not a valid integer.', 'boros-newsletter-extended') );
-										$this->set_value( $form_name, $key, $input['std']);
-									}
-									break;
-								
-								case 'estado':
-									$estados = array('Acre','Alagoas','Amapá','Amazonas','Bahia','Ceará','Distrito Federal','Espírito Santo', 'Goiás', 'Maranhão','Mato Grosso','Mato Grosso do Sul','Minas Gerais', 'Pará','Paraíba', 'Paraná','Pernambuco', 'Piauí','Rio de Janeiro','Rio Grande do Norte','Rio Grande do Sul','Rondônia','Roraima','Santa Catarina','São Paulo','Sergipe','Tocantins');
-									if( in_array( $value, $estados ) ){
-										$this->set_value( $form_name, $key, $value);
-									}
-									else{
-										$this->set_error( $form_name, $key, __('This is not a valid state.', 'boros-newsletter-extended') );
-										$this->set_value( $form_name, $key, $input['std']);
-									}
-									break;
+										break;
+									
+									case 'bool':
+										if( filter_var( $value, FILTER_VALIDATE_BOOLEAN) ){
+											$this->set_value( $form_name, $key, $value);
+										}
+										else{
+											$this->set_error( $form_name, $key, __('This is not a valid integer.', 'boros-newsletter-extended') );
+											$this->set_value( $form_name, $key, $input['std']);
+										}
+										break;
+									
+									case 'estado':
+										$estados = array('Acre','Alagoas','Amapá','Amazonas','Bahia','Ceará','Distrito Federal','Espírito Santo', 'Goiás', 'Maranhão','Mato Grosso','Mato Grosso do Sul','Minas Gerais', 'Pará','Paraíba', 'Paraná','Pernambuco', 'Piauí','Rio de Janeiro','Rio Grande do Norte','Rio Grande do Sul','Rondônia','Roraima','Santa Catarina','São Paulo','Sergipe','Tocantins');
+										if( in_array( $value, $estados ) ){
+											$this->set_value( $form_name, $key, $value);
+										}
+										else{
+											$this->set_error( $form_name, $key, __('This is not a valid state.', 'boros-newsletter-extended') );
+											$this->set_value( $form_name, $key, $input['std']);
+										}
+										break;
+								}
 							}
 						}
+						//pre($this->forms[$form_name]['form_model'][$key], $key);
 					}
-					//pre($this->forms[$form_name]['form_model'][$key], $key);
 				}
 				
 				/**
@@ -391,7 +419,7 @@ class BorosNewsletter {
 								break;
 						}
 					}
-					// adicionar datano formato sql com o ajuste de horário
+					// adicionar data no formato sql com o ajuste de horário
 					date_default_timezone_set('America/Sao_Paulo');
 					$data_array[ 'person_date' ] = date("Y-m-d H:i:s");
 					
@@ -433,6 +461,32 @@ class BorosNewsletter {
 			$this->forms[$form_name]['form_model'][$key]['value'] = $value;
 			$this->forms[$form_name]['form_data'][$key] = $value;
 		}
+	}
+	
+	private function check_spam( $form_name, $data ){
+		require_once 'Akismet.class.php';
+		
+		$home_url = home_url('/');
+		$akismet_key = $this->forms[$form_name]['form_options']['akismet_key'];
+		$akismet = new Akismet( $home_url, $akismet_key);
+		if( $akismet->isKeyValid() ){
+			//$akismet->setCommentAuthor('viagra-test-123'); // test positive spam
+			$akismet->setCommentAuthor($data['author']);
+			$akismet->setCommentAuthorEmail($data['email']);
+			$akismet->setCommentAuthorURL($data['url']);
+			$akismet->setCommentContent($data['comment']);
+			$akismet->setPermalink( $home_url );
+			return $akismet->isCommentSpam();
+		}
+		else{
+			$alerts = get_option('boros_dashboard_notifications');
+			if( !isset($alerts['akismet_key_error']) ){
+				$alerts['akismet_key_error'] = 'A chave API do Akismet está vazia ou é incorreta';
+				update_option('boros_dashboard_notifications', $alerts);
+			}
+		}
+		//pre($akismet, '$akismet');
+		return false;
 	}
 	
 	/**
@@ -900,7 +954,7 @@ class BorosNewsletter {
 		}
 		else{
 			// load excel library
-			require 'php-excel.class.php';
+			require_once 'php-excel.class.php';
 
 			extract( $_POST );
 			$start_date = "{$start_ano}-{$start_mes}-{$start_dia}";
