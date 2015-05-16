@@ -61,7 +61,7 @@
  * @author	Alex Potsides
  * @link	http://www.achingbrain.net/
  */
-class Akismet {
+class AkismetValidation {
 	private $version = '0.5';
 	private $wordPressAPIKey;
 	private $blogURL;
