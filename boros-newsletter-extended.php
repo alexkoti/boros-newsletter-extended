@@ -330,6 +330,11 @@ class BorosNewsletter {
 				// pular demais verificações caso seja identificado como spam.
 				if( $is_spam == false ){
 					foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
+                        // pular caso seja submit
+                        if( $input['type'] == 'submit' ){
+                            continue;
+                        }
+                        
 						if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) and $input['db_column'] != 'skip' ){
 							$this->set_error( $form_name, $key, sprintf(__('The %s field needs to be filled.', 'boros-newsletter-extended'), $input['label']) );
 							$this->set_value( $form_name, $key, $input['std']);
