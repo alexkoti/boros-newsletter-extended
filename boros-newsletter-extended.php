@@ -262,6 +262,7 @@ class BorosNewsletter {
 		foreach( $custom_config as $form_name => $form ){
 			// aplicar valores padrão
 			$this->forms[$form_name]                  = boros_parse_args( $this->defaults, $form );
+			$this->forms[$form_name]['form_name']     = $form_name;
 			$this->forms[$form_name]['form_id']       = false; // form postado, por padrão é falso, já que pode ser único na página
 			$this->forms[$form_name]['form_data']     = array();
 			$this->forms[$form_name]['form_errors']   = array();
@@ -501,9 +502,6 @@ class BorosNewsletter {
 	 */
 	function frontend_output( $form_name ){
 		if( isset($this->forms[$form_name]) ){
-			// configuração do form
-			$form = $this->forms[$form_name];
-			//pre($form, '$form', true);
 			
 			// definir id única para a página, que pode conter diversas instâncias do mesmo form
 			if( !isset($this->forms[$form_name]['count']) ){
@@ -512,6 +510,10 @@ class BorosNewsletter {
 			else{
 				$this->forms[$form_name]['count']++;
 			}
+			
+			// configuração do form
+			$form = $this->forms[$form_name];
+			
 			// definir a id para esta instância na página, pode haver múltplas na mesma página
 			$form_id = "{$form['form_attrs']['id']}-{$this->forms[$form_name]['count']}";
 			
@@ -560,6 +562,7 @@ class BorosNewsletter {
 				$messages_html .= $form['form_messages']['blank'];
 			}
 			
+            //pre($form);
 			$action = self_url();
 			echo $form['form_options']['before'];
 			echo "<form action='{$action}#{$form_id}' method='post' id='{$form_id}' class='{$classes}' role='form'>";
@@ -577,7 +580,7 @@ class BorosNewsletter {
 				if( !empty($input['error']) and $form_id == $form['form_id'] ){
 					$input['classes']['form_group_class'] .= ' has-error';
 				}
-				$this->show_input($input);
+				$this->show_input($input, $form['form_name']);
 			}
 			if( $form['form_messages']['position'] == 'after' ){ echo $messages_html; }
 			echo $form['form_options']['append'];
@@ -589,20 +592,20 @@ class BorosNewsletter {
 		}
 	}
 	
-	private function show_input( $input ){
+	private function show_input( $input, $form_name ){
 		if( method_exists($this, "input_type_{$input['type']}") ){
-			call_user_func( array($this, "input_type_{$input['type']}"), $input );
+			call_user_func( array($this, "input_type_{$input['type']}"), $input, $form_name );
 		}
 		else{
-			$this->custom_input_type( $input );
+			$this->custom_input_type( $input, $form_name );
 		}
 	}
 	
-	private function input_type_text( $input ){
+	private function input_type_text( $input, $form_name ){
 		$type = ( $input['db_column'] == 'person_email' ) ? 'email' : 'text';
 		$size = ( isset($input['size']) ) ? "input-{$input['size']}" : '';
 		if( $input['form_type'] == 'inline' ){
-			$value = $this->input_reload($input);
+			$value = $this->input_reload($input, $form_name);
 			$html = "<input type='{$type}' name='{$input['name']}' class='form-control {$input['classes']['input_class']} {$size}' id='{$input['id']}' placeholder='{$input['placeholder']}' value='{$value}'>";
 			echo "<div class='form-group {$input['classes']['form_group_class']}'>";
 			if( $input['label'] != false ){ echo "<label class='sr-only {$input['classes']['label_class']}' for='{$input['id']}'>{$input['label']}</label>"; }
@@ -645,7 +648,7 @@ class BorosNewsletter {
 		}
 	}
 	
-	private function input_type_submit( $input ){
+	private function input_type_submit( $input, $form_name ){
 		$size = ( isset($input['size']) ) ? "btn-{$input['size']}" : '';
 		echo "<input type='submit' class='btn {$input['classes']['input_class']} {$size}' id='{$input['id']}' value='{$input['label']}' />";
 	}
@@ -654,18 +657,20 @@ class BorosNewsletter {
 		
 	}
 	
-	private function custom_input_type( $input ){
+	private function custom_input_type( $input, $form_name ){
 		//pre( $input, 'custom_input_type', false );
 		$html = '';
 		echo apply_filters( "boros_newsletter_custom_input_{$input['type']}", $html, $input );
 	}
 	
-	private function input_reload( $input ){
+	private function input_reload( $input, $form_name ){
 		if( empty($input['value']) ){
 			return $input['std'];
 		}
 		else{
-			return $input['value'];
+            if( $this->forms[$form_name]['form_status'] != 'success' ){
+                return $input['value'];
+            }
 		}
 	}
 	
