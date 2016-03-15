@@ -613,7 +613,12 @@ class BorosNewsletter {
 			echo "</div>\n";
 		}
 		elseif( $input['form_type'] == 'normal' ){
-			
+			$value = $this->input_reload($input, $form_name);
+			$html = "<input type='{$type}' name='{$input['name']}' class='form-control {$input['classes']['input_class']} {$size}' id='{$input['id']}' placeholder='{$input['placeholder']}' value='{$value}'>";
+			echo "<div class='form-group {$input['classes']['form_group_class']}'>";
+			if( $input['label'] != false ){ echo "<label class='{$input['classes']['label_class']}' for='{$input['id']}'>{$input['label']}</label>"; }
+			$this->input_addon($html, $input);
+			echo "</div>\n";
 		}
 		elseif( $input['form_type'] == 'horizontal' ){
 			
@@ -727,8 +732,8 @@ class BorosNewsletter {
 				if( !is_serialized( $data_array['person_metadata'] ) ){
 					$data_array['person_metadata'] = maybe_serialize($data_array['person_metadata']);
 				}
-				$wpdb->insert( $table_name, $data_array );
 			}
+            $wpdb->insert( $table_name, $data_array );
 		}
 	}
 	
