@@ -514,8 +514,12 @@ class BorosNewsletter {
 			// configuração do form
 			$form = $this->forms[$form_name];
 			
-			// definir a id para esta instância na página, pode haver múltplas na mesma página
-			$form_id = "{$form['form_attrs']['id']}-{$this->forms[$form_name]['count']}";
+			// definir a id para esta instância na página, pode haver múltiplas na mesma página
+			$form_id = $form['form_attrs']['id'];
+            // adiconar marcador só a partir do segundo item
+            if( $this->forms[$form_name]['count'] > 1 ){
+                    $form_id .= "-{$this->forms[$form_name]['count']}";
+            }
 			
 			$classes_arr = array(
 				$form['form_attrs']['class'],
