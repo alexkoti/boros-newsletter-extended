@@ -96,6 +96,7 @@ class BorosNewsletter {
 			'prepend' => '',
 			'append' => '',
 			'after' => '',
+			'email_field' => 'ipt_email',
 		),
 		'form_attrs' => array(
 			'id' => 'form-newsletter',
@@ -114,6 +115,7 @@ class BorosNewsletter {
 		'form_model' => array(
 			'ipt_email' => array(
 				'db_column' => 'person_email',
+				'name' => 'ipt_email',
 				'type' => 'text',
 				'label' => 'Email',
 				'placeholder' => 'Seu e-mail',
@@ -270,12 +272,19 @@ class BorosNewsletter {
 			
 			// adicionar valores aos inputs
 			foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
-				$this->forms[$form_name]['form_model'][$key]['name']      = $key;
+                if( !isset($this->forms[$form_name]['form_model'][$key]['name']) ){
+                    $this->forms[$form_name]['form_model'][$key]['name']  = $key;
+                }
 				$this->forms[$form_name]['form_model'][$key]['form_type'] = $this->forms[$form_name]['form_options']['type'];
 				$this->forms[$form_name]['form_model'][$key]['layout']    = $this->forms[$form_name]['form_options']['layout'];
 				$this->forms[$form_name]['form_model'][$key]['form_name'] = $form_name;
 				$this->forms[$form_name]['form_model'][$key]['error']     = '';
 				$this->forms[$form_name]['form_model'][$key]['value']     = '';
+                
+                // caso seja o campo person_emal, sinalizar para a posterior verificação de akismet
+                if( isset($this->forms[$form_name]['form_model'][$key]['db_column']) and $this->forms[$form_name]['form_model'][$key]['db_column'] == 'person_email' ){
+                    $this->forms[$form_name]['form_options']['email_field'] = $this->forms[$form_name]['form_model'][$key]['name'];
+                }
 			}
 		}
 		//pre($this->forms, 'forms', false);
@@ -293,7 +302,7 @@ class BorosNewsletter {
 				//pre($_POST, '$_POST');
 				
 				/**
-				 * Guardar a id html do form postado, incialmente ele é vazio, e para cada instância é criada uma id
+				 * Guardar a id html do form postado, inicialmente ele é vazio, e para cada instância é criada uma id
 				 * única para cada form, enviada via input:hidden['form_id']
 				 * 
 				 */
@@ -320,7 +329,7 @@ class BorosNewsletter {
 					}
 					$is_spam = $this->check_spam( $form_name, $akismet_fields );
 					if( $is_spam == true ){
-						$this->set_error( $form_name, 'ipt_email', __('Your e-mail is identified as spam.', 'boros-newsletter-extended') );
+						$this->set_error( $form_name, $this->forms[$form_name]['form_options']['email_field'], __('Your e-mail is identified as spam.', 'boros-newsletter-extended') );
 					}
 				}
 				
@@ -336,12 +345,12 @@ class BorosNewsletter {
                             continue;
                         }
                         
-						if( $input['required'] == true and (!isset($_POST[$key]) or empty($_POST[$key])) and $input['db_column'] != 'skip' ){
+						if( $input['required'] == true and (!isset($_POST[ $input['name'] ]) or empty($_POST[ $input['name'] ])) and $input['db_column'] != 'skip' ){
 							$this->set_error( $form_name, $key, sprintf(__('The %s field needs to be filled.', 'boros-newsletter-extended'), $input['label']) );
 							$this->set_value( $form_name, $key, $input['std']);
 						}
 						else{
-							$value = sanitize_text_field($_POST[$key]);
+							$value = sanitize_text_field($_POST[ $input['name'] ]);
 							
 							// preenchido, porém é valor padrão e não aceito
 							if( ($input['accept_std'] == false) and ($value == $input['std']) and $input['db_column'] != 'skip' ){
@@ -637,7 +646,10 @@ class BorosNewsletter {
 	 * 
 	 */
 	private function input_addon( $html, $input ){
-		$addon = boros_trim_array($input['addon']);
+        $addon = '';
+        if( isset($input['addon']) ){
+            $addon = boros_trim_array($input['addon']);
+        }
 		if( !empty($addon) ){
 			echo '<div class="input-group">';
 			if( !empty($input['addon']['before']) ){echo "<span class='input-group-addon'>{$input['addon']['before']}</span>";}
