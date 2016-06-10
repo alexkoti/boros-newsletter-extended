@@ -39,7 +39,7 @@ License: GPL2
  * Hook de ativação, para criar a tabela, se necessário
  * 
  */
-register_activation_hook( __FILE__, array('BorosNewsletter', 'check_table') );
+register_activation_hook( plugin_basename( __FILE__ ), array('BorosNewsletter', 'check_table') );
 
 /**
  * Iniciar o plugin no processo corrente
