@@ -578,7 +578,7 @@ class BorosNewsletter {
             //pre($form);
 			$action = self_url();
 			echo $form['form_options']['before'];
-			echo "<form action='{$action}#{$form_id}' method='post' id='{$form_id}' class='{$classes}' role='form'>";
+			echo "<form action='{$action}#{$form_id}' method='post' id='{$form_id}' class='{$classes}'>";
 			echo "<input type='hidden' name='form_type' value='boros_newsletter_form' />";
 			echo "<input type='hidden' name='form_name' value='{$form_name}' />";
 			echo "<input type='hidden' name='form_id' value='{$form_id}' />";
