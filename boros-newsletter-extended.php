@@ -601,7 +601,7 @@ class BorosNewsletter {
 			echo $form['form_options']['after'];
 		}
 		else {
-			echo "<div class='alert alert-danger' role='alert'>Este formulário (id: <strong>{$form_name}</strong>) não está registrado. É preciso registrar cada form no hook <code>boros_newsletter_register_forms</code></div>";
+			echo "<div class='alert alert-danger' role='alert'>Este formulário (id: <strong>{$form_name}</strong>) não está registrado. É preciso registrar cada form no hook <code>boros_newsletter_set_config</code></div>";
 		}
 	}
 	
@@ -681,7 +681,8 @@ class BorosNewsletter {
 	private function custom_input_type( $input, $form_name ){
 		//pre( $input, 'custom_input_type', false );
 		$html = '';
-		echo apply_filters( "boros_newsletter_custom_input_{$input['type']}", $html, $input );
+		$value = $this->input_reload($input, $form_name);
+		echo apply_filters( "boros_newsletter_custom_input_{$input['type']}", $html, $input, $value );
 	}
 	
 	private function input_reload( $input, $form_name ){
