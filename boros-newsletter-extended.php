@@ -727,7 +727,7 @@ class BorosNewsletter {
 			$oldmeta = maybe_unserialize( $person->person_metadata );
 			
 			// verificar se é igual, e atualizar
-			if( $data_array['person_metadata'] != $oldmeta ){
+			if( isset($data_array['person_metadata']) and $data_array['person_metadata'] != $oldmeta ){
 				if( !empty($oldmeta) )
 					$data_array['person_metadata'] = maybe_serialize($data_array['person_metadata'] + $oldmeta);
 				
