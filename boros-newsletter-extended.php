@@ -90,13 +90,14 @@ class BorosNewsletter {
 	 */
 	var $defaults = array(
 		'form_options' => array(
-			'type' => 'normal',
-			'layout' => 'bootstrap3',
-			'before' => '',
-			'prepend' => '',
-			'append' => '',
-			'after' => '',
-			'email_field' => 'ipt_email',
+			'type'          => 'normal',
+			'layout'        => 'bootstrap3',
+			'before'        => '',
+			'prepend'       => '',
+			'append'        => '',
+			'after'         => '',
+			'action_append' => '',
+			'email_field'   => 'ipt_email',
 		),
 		'form_attrs' => array(
 			'id' => 'form-newsletter',
@@ -269,7 +270,15 @@ class BorosNewsletter {
 			$this->forms[$form_name]['form_data']     = array();
 			$this->forms[$form_name]['form_errors']   = array();
 			$this->forms[$form_name]['form_status']   = 'blank';
-			
+            
+            // ordenar os campos conforme o array de configuração
+            $inputs_order = array_keys($form['form_model']);
+            $ordered_model = array();
+            foreach( $inputs_order as $index ){
+                $ordered_model[$index] = $this->forms[$form_name]['form_model'][$index];
+            }
+            $this->forms[$form_name]['form_model'] = $ordered_model;
+            
 			// adicionar valores aos inputs
 			foreach( $this->forms[$form_name]['form_model'] as $key => $input ){
                 if( !isset($this->forms[$form_name]['form_model'][$key]['name']) ){
@@ -574,11 +583,20 @@ class BorosNewsletter {
 			else{
 				$messages_html .= $form['form_messages']['blank'];
 			}
-			
-            //pre($form);
-			$action = self_url();
+            
+            $action = self_url();
+            if( $form['form_options']['action_append'] === false ){
+                $action_append = '';
+            }
+            elseif( empty($form['form_options']['action_append']) ){
+                $action_append = "#{$form_id}";
+            }
+            else{
+                $action_append = $form['form_options']['action_append'];
+            }
+            
 			echo $form['form_options']['before'];
-			echo "<form action='{$action}#{$form_id}' method='post' id='{$form_id}' class='{$classes}'>";
+			echo "<form action='{$action}{$action_append}' method='post' id='{$form_id}' class='{$classes}'>";
 			echo "<input type='hidden' name='form_type' value='boros_newsletter_form' />";
 			echo "<input type='hidden' name='form_name' value='{$form_name}' />";
 			echo "<input type='hidden' name='form_id' value='{$form_id}' />";
