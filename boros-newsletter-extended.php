@@ -241,7 +241,8 @@ class BorosNewsletter {
 	}
 	
 	private function dependecy_check(){
-		$this->boros_active = plugin_is_active('boros/boros.php') ? true : false;
+        include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+		$this->boros_active = is_plugin_active('boros/boros.php') ? true : false;
 	}
 	
 	/**
