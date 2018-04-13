@@ -640,7 +640,7 @@ class BorosNewsletter {
 			$value = $this->input_reload($input, $form_name);
 			$html = "<input type='{$type}' name='{$input['name']}' class='form-control {$input['classes']['input_class']} {$size}' id='{$input['id']}' placeholder='{$input['placeholder']}' value='{$value}'>";
 			echo "<div class='form-group {$input['classes']['form_group_class']}'>";
-			if( $input['label'] != false ){ echo "<label class='sr-only {$input['classes']['label_class']}' for='{$input['id']}'>{$input['label']}</label>"; }
+			if( $input['label'] != false ){ echo "<label class='{$input['classes']['label_class']}' for='{$input['id']}'>{$input['label']}</label>"; }
 			$this->input_addon($html, $input);
 			echo "</div>\n";
 		}
@@ -690,7 +690,7 @@ class BorosNewsletter {
 	
 	private function input_type_submit( $input, $form_name ){
 		$size = ( isset($input['size']) ) ? "btn-{$input['size']}" : '';
-		echo "<input type='submit' class='btn {$input['classes']['input_class']} {$size}' id='{$input['id']}' value='{$input['label']}' />";
+		echo "<input type='submit' class='{$input['classes']['input_class']} {$size}' id='{$input['id']}' value='{$input['label']}' />";
 	}
 	
 	private function custom_input_layout( $input ){
