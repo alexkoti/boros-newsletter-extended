@@ -597,6 +597,7 @@ class BorosNewsletter {
             }
             
 			echo $form['form_options']['before'];
+			if( $form['form_messages']['position'] == 'before_outsite' ){ echo $messages_html; }
 			echo "<form action='{$action}{$action_append}' method='post' id='{$form_id}' class='{$classes}'>";
 			echo "<input type='hidden' name='form_type' value='boros_newsletter_form' />";
 			echo "<input type='hidden' name='form_name' value='{$form_name}' />";
@@ -617,6 +618,7 @@ class BorosNewsletter {
 			if( $form['form_messages']['position'] == 'after' ){ echo $messages_html; }
 			echo $form['form_options']['append'];
 			echo "</form>";
+			if( $form['form_messages']['position'] == 'after_outside' ){ echo $messages_html; }
 			echo $form['form_options']['after'];
 		}
 		else {
