@@ -980,7 +980,7 @@ class BorosNewsletter {
 				'label' => 'Nome', 
 				'type' => 'column',
 			),
-			'ipt_sobrenome' => array(
+			'person_sobrenome' => array(
 				'label' => 'Sobrenome', 
 				'type' => 'metadata',
 			),
