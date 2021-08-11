@@ -794,7 +794,9 @@ class BorosNewsletter {
             return false;
         }
 
-        $first_year = date('Y');
+        $fy = 2010;
+        $fm = 1;
+        $fd = 1;
         $tabela     = self::table_name();
         $first_item = $wpdb->get_results("
             SELECT person_date
@@ -804,7 +806,9 @@ class BorosNewsletter {
         ");
         if( !empty($first_item) ){
             $first_date = new DateTime($first_item[0]->person_date);
-            $first_year = $first_date->format('Y');
+            $fy = $first_date->format('Y');
+            $fm = $first_date->format('m');
+            $fd = $first_date->format('d');
         }
 		?>
 		<div class="wrap">
@@ -814,9 +818,9 @@ class BorosNewsletter {
 				<h3>Exportar dados:</h3>
 				<p>
 					Data inicio: <br />
-					<select name="start_dia" class="ipt_select_dia"><?php $this->decimal_options_list(1, 31, 1, 2); ?></select>
-					<select name="start_mes" class="ipt_select_mes"><?php $this->decimal_options_list(1, 12, 1, 2); ?></select>
-					<select name="start_ano" class="ipt_select_ano"><?php $this->decimal_options_list($first_year, date('Y'), 2011, 0); ?></select>
+					<select name="start_dia" class="ipt_select_dia"><?php $this->decimal_options_list(1, 31, $fd, 2); ?></select>
+					<select name="start_mes" class="ipt_select_mes"><?php $this->decimal_options_list(1, 12, $fm, 2); ?></select>
+					<select name="start_ano" class="ipt_select_ano"><?php $this->decimal_options_list($fy, date('Y'), $fy, 0); ?></select>
 				</p>
 				<p>
 					Data fim: <br />
@@ -870,10 +874,10 @@ class BorosNewsletter {
 			?>
 			<h3>Dados cadastrados:</h3>
 			
-			<table id="newsletter_data" class="widefat">
+			<table id="newsletter_data" class="wp-list-table widefat fixed striped table-view-list posts">
 				<thead>
 					<tr>
-						<th class="check-column"></th>
+                        <td id="cb" class="manage-column column-cb check-column"><label class="screen-reader-text" for="cb-select-all-1">Selecionar todos</label><input id="cb-select-all-1" type="checkbox"></td>
 						<?php foreach( $columns as $key => $col ){
 							echo "<th>{$col['label']}</th>";
 						}
@@ -882,46 +886,47 @@ class BorosNewsletter {
 				</thead>
 				<tfoot>
 					<tr>
-						<th class="check-column"></th>
+                        <td id="cb" class="manage-column column-cb check-column"><label class="screen-reader-text" for="cb-select-all-1">Selecionar todos</label><input id="cb-select-all-1" type="checkbox"></td>
 						<?php foreach( $columns as $key => $col ){
 							echo "<th>{$col['label']}</th>";
 						}
 						?>
 					</tr>
 				</tfoot>
-			<?php
-			add_filter( 'boros_newsletter_admin_page_input_person_date', array($this, 'date_filter') );
-			$i = 0;
-			foreach( $cadastros as $cad ){
-				$args = array(
-					'newsletter_action' => 'remove',
-					'person_id' => $cad['person_id'],
-				);
-				$tr_class = ($i++%2==1) ? '' : 'alternate';
-			?>
-				<tr class="<?php echo $tr_class; ?>">
-					<td><a href="<?php echo add_query_arg( $args ); ?>" class="newsletter_remove_btn" title="ID: <?php echo $cad['person_id']; ?>">Remover</a></td>
-					<?php
-					$metadatas = maybe_unserialize($cad['person_metadata']);
-					foreach( $columns as $key => $col ){
-						if( $col['type'] == 'metadata' ){
-							$val = '';
-							if( isset($metadatas[$key]) ){
-								$val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $metadatas[$key] );
-							}
-							echo "<td>{$val}</td>";
-						}
-						else{
-							$val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $cad[$key] );
-							echo "<td>{$val}</td>";
-						}
-					}
-					?>
-				</tr>
-				<?php
-			}
-			?>
+                <tbody id="the-list">
+                    <?php
+                    add_filter( 'boros_newsletter_admin_page_input_person_date', array($this, 'date_filter') );
+                    $i = 0;
+                    foreach( $cadastros as $i => $cad ){
+                    ?>
+                        <tr id="post-<?php echo $cad['person_id']; ?>" iedit author-other level-0 post-<?php echo $cad['person_id']; ?> type-post">
+                            <th scope="row" class="check-column">
+                                <label class="screen-reader-text" for="cb-select-<?php echo $cad['person_id']; ?>">selecionar</label>
+                                <input id="cb-select-<?php echo $cad['person_id']; ?>" type="checkbox" name="ne[]" value="<?php echo $cad['person_id']; ?>">
+                            </th>
+                            <?php
+                            $metadatas = maybe_unserialize($cad['person_metadata']);
+                            foreach( $columns as $key => $col ){
+                                if( $col['type'] == 'metadata' ){
+                                    $val = '';
+                                    if( isset($metadatas[$key]) ){
+                                        $val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $metadatas[$key] );
+                                    }
+                                    echo "<td>{$val}</td>";
+                                }
+                                else{
+                                    $val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $cad[$key] );
+                                    echo "<td>{$val}</td>";
+                                }
+                            }
+                            ?>
+                        </tr>
+                        <?php
+                    }
+                    ?>
+                </tbody>
 			</table>
+            
 			<div class="tablenav form-table" style="height:auto;">
 				<form action="<?php echo get_bloginfo('wpurl') . '/wp-admin/admin.php'; ?>" method="get">
 					Resultados por página:
@@ -931,25 +936,27 @@ class BorosNewsletter {
 					<input class="button-primary" type="submit" value="ok" />
 				</form>
 				<div class="tablenav-pages" style="height:auto;">
-					<?php if( $pg > 1 ){ ?>
-					<a href="<?php echo add_query_arg( array('pg' => $pg - 1, 'per_page' => $per_page) ); ?>">&laquo;</a>
-					<?php } ?>
-					
-					<?php
-						for( $i=1; $i <= $total_paginas; $i++ ){
-							if( $i == $pg ){
-								echo ' <span class="page-numbers current">' . $i . '</span> ';
-							}
-							else{
-								echo '<a class="page-numbers" href="' . add_query_arg( array('pg' => $i, 'per_page' => $per_page) ) . '">' . $i . '</a> ';
-							}
-						}
-					?>
-					<?php
-					if( $pg < $total_paginas ){
-					?>
-					<a href="<?php echo add_query_arg( array('pg' => $pg + 1, 'per_page' => $per_page) ); ?>">&raquo;</a>
-					<?php } ?>
+                    <span class="pagination-links">
+                        <?php if( $pg > 1 ){ ?>
+                        <a href="<?php echo add_query_arg( array('pg' => $pg - 1, 'per_page' => $per_page) ); ?>" class="button">&laquo;</a>
+                        <?php } ?>
+                        
+                        <?php
+                            for( $i=1; $i <= $total_paginas; $i++ ){
+                                if( $i == $pg ){
+                                    echo ' <span class="page-numbers button current disabled">' . $i . '</span> ';
+                                }
+                                else{
+                                    echo '<a class="page-numbers button" href="' . add_query_arg( array('pg' => $i, 'per_page' => $per_page) ) . '">' . $i . '</a> ';
+                                }
+                            }
+                        ?>
+                        <?php
+                        if( $pg < $total_paginas ){
+                        ?>
+                        <a href="<?php echo add_query_arg( array('pg' => $pg + 1, 'per_page' => $per_page) ); ?>" class="button">&raquo;</a>
+                        <?php } ?>
+                    </span>
 				</div>
 				<p style="clear:both;text-align:right">Tempo de consulta: <?php echo timer_stop(0,3); ?> segundos.</p>
 			</div>
