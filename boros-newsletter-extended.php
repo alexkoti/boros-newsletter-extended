@@ -788,7 +788,24 @@ class BorosNewsletter {
 	 * 
 	 */
 	function admin_page_output(){
-		if( !is_admin() ){ return false; }
+        global $wpdb;
+
+        if( !is_admin() ){
+            return false;
+        }
+
+        $first_year = date('Y');
+        $tabela     = self::table_name();
+        $first_item = $wpdb->get_results("
+            SELECT person_date
+            FROM $tabela
+            ORDER BY person_date ASC
+            LIMIT 1
+        ");
+        if( !empty($first_item) ){
+            $first_date = new DateTime($first_item[0]->person_date);
+            $first_year = $first_date->format('Y');
+        }
 		?>
 		<div class="wrap">
 			<h2><?php echo bloginfo('blogname'); ?> - Newsletter</h2>
@@ -797,15 +814,15 @@ class BorosNewsletter {
 				<h3>Exportar dados:</h3>
 				<p>
 					Data inicio: <br />
-					<select name="start_dia" class="ipt_select_dia"><?php decimal_options_list(1, 31, 1, 2); ?></select>
-					<select name="start_mes" class="ipt_select_mes"><?php decimal_options_list(1, 12, 1, 2); ?></select>
-					<select name="start_ano" class="ipt_select_ano"><?php decimal_options_list(2011, 2020, 2011, 0); ?></select>
+					<select name="start_dia" class="ipt_select_dia"><?php $this->decimal_options_list(1, 31, 1, 2); ?></select>
+					<select name="start_mes" class="ipt_select_mes"><?php $this->decimal_options_list(1, 12, 1, 2); ?></select>
+					<select name="start_ano" class="ipt_select_ano"><?php $this->decimal_options_list($first_year, date('Y'), 2011, 0); ?></select>
 				</p>
 				<p>
 					Data fim: <br />
-					<select name="end_dia" class="ipt_select_dia"><?php decimal_options_list(1, 31, date('d'), 2); ?></select>
-					<select name="end_mes" class="ipt_select_mes"><?php decimal_options_list(1, 12, date('m'), 2); ?></select>
-					<select name="end_ano" class="ipt_select_ano"><?php decimal_options_list(2011, 2020, date('Y'), 0); ?></select>
+					<select name="end_dia" class="ipt_select_dia"><?php $this->decimal_options_list(1, 31, date('d'), 2); ?></select>
+					<select name="end_mes" class="ipt_select_mes"><?php $this->decimal_options_list(1, 12, date('m'), 2); ?></select>
+					<select name="end_ano" class="ipt_select_ano"><?php $this->decimal_options_list($first_year, date('Y'), date('Y'), 0); ?></select>
 				</p>
 				<input type="hidden" name="action" value="boros_newsletter_download" />
 				<input type="submit" value="Exportar" class="button-primary" name="submit_newsletter" />
@@ -1000,6 +1017,18 @@ class BorosNewsletter {
 		$new_date = $date != '0000-00-00 00:00:00' ? mysql2date('d\/m\/Y \à\s h:m:s', $date) : 'Sem data';
 		return $new_date;
 	}
+
+    function decimal_options_list($start, $end, $value, $pad = 0){
+        for( $a = $start; $a <= $end; $a++ ){
+            if( $pad > 0){
+                $f = '%0' . $pad . 'd';
+                $a = sprintf( $f, $a );
+            }
+        ?>
+            <option value="<?php echo $a;?>" <?php selected( $value, $a, true ); ?> /><?php echo $a;?></option>
+        <?php
+        }
+    }
 	
 	function boros_newsletter_download(){
 		if( empty($this->forms) ){
