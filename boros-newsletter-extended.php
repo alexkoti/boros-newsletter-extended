@@ -228,8 +228,8 @@ class BorosNewsletter {
 		$this->init_table();
 		
 		// actions
+		add_action( 'admin_init', array($this, 'admin_remove_user') ); // precisa rodar antes do admin_page para renovar o nonce corretamente
 		add_action( 'admin_menu', array($this, 'admin_page') );
-		add_action( 'admin_init', array($this, 'admin_remove_user') );
 		add_action( 'wp_ajax_boros_newsletter_download', array($this, 'boros_newsletter_download') ); // admin
 		
 		// continuar apenas caso exista algum form registrado
@@ -716,20 +716,31 @@ class BorosNewsletter {
             }
 		}
 	}
-	
-	/**
-	 * Remover usuário pelo link de (-) na listagem de usuários no admin
-	 * @todo adicionar nonce
-	 * 
-	 */
-	function admin_remove_user(){
-		if( isset($_GET['newsletter_action']) and $_GET['newsletter_action'] == 'remove' ){
-			global $wpdb;
-			$person_id = (int)$_GET['person_id'];
-			$wpdb->query( $wpdb->prepare("DELETE FROM {$wpdb->newsletter} WHERE person_id = %d", $person_id ) );
-		}
-	}
-	
+    
+    /**
+     * Remover usuário pelo link de (-) na listagem de usuários no admin
+     * @todo adicionar nonce
+     * 
+     */
+    function admin_remove_user(){
+        if( isset($_POST['newsletter_action']) and $_POST['newsletter_action'] == 'remove' ){
+            global $wpdb;
+
+            // check nonce
+            check_admin_referer('newsletter-remove-entries');
+
+            // escape entries IDs
+            $escaped = array();
+            foreach($_POST['ne'] as $k => $v){
+                $escaped[] = $wpdb->prepare('%d', $v);
+            }
+            $ids = implode(',', $escaped);
+
+            // delete entries
+            $wpdb->query( "DELETE FROM {$wpdb->newsletter} WHERE person_id IN ({$ids})" );
+        }
+    }
+    
 	/**
 	 * Adicionar diretamente usuário novo ou atualizar dados caso já exista. Será usado como callbacks de outras functions.
 	 * Na primeira versão existe um bloco que remove o usuário da lista caso não tenha sido preenchido metadadtas. Verificar
@@ -780,6 +791,12 @@ class BorosNewsletter {
 	 * 
 	 */
 	function admin_page(){
+        global $wpdb;
+        //total de cadastros após uma eventual remoção
+        $tabela = self::table_name();
+        $total_cadastros = $wpdb->get_results("SELECT count(*) as total FROM {$tabela}", ARRAY_A);
+        $this->total_cadastros = $total_cadastros[0]['total'];
+
 		$admin_page = add_menu_page( 'Newsletter', 'Newsletter', 'edit_pages', 'newsletter_controls' , array($this, 'admin_page_output'), 'dashicons-email' );
 	}
 	
@@ -826,116 +843,118 @@ class BorosNewsletter {
 					Data fim: <br />
 					<select name="end_dia" class="ipt_select_dia"><?php $this->decimal_options_list(1, 31, date('d'), 2); ?></select>
 					<select name="end_mes" class="ipt_select_mes"><?php $this->decimal_options_list(1, 12, date('m'), 2); ?></select>
-					<select name="end_ano" class="ipt_select_ano"><?php $this->decimal_options_list($first_year, date('Y'), date('Y'), 0); ?></select>
+					<select name="end_ano" class="ipt_select_ano"><?php $this->decimal_options_list($fy, date('Y'), date('Y'), 0); ?></select>
 				</p>
 				<input type="hidden" name="action" value="boros_newsletter_download" />
 				<input type="submit" value="Exportar" class="button-primary" name="submit_newsletter" />
 			</form>
 			
-			<?php
-				
-				if( isset($_GET['pg']) ){
-					$pg = $_GET['pg'];
-				}
-				else{
-					$pg = 1;
-				}
-				// resultados por página
-				if( isset($_GET['per_page']) ){
-					$per_page = $_GET['per_page'];
-				}
-				else{
-					$per_page = 10;
-				}
-				// offset
-				$offset = ($pg - 1) * $per_page;
-				
-				global $wpdb, $post;
-				$tabela = self::table_name();
-				
-				//total de cadastros
-				$total_cadastros = $wpdb->get_results("
-						SELECT person_id
-						FROM $tabela
-				", ARRAY_A);
-				
-				// dados da página atual
-				$cadastros = $wpdb->get_results("
-						SELECT *
-						FROM $tabela
-						ORDER BY person_id DESC
-						LIMIT $offset, $per_page
-				", ARRAY_A);
-				
-				// total de páginas
-				$total_paginas = ceil( count($total_cadastros) / $per_page );
-				
-				$columns = $this->get_admin_page_columns();
-			?>
-			<h3>Dados cadastrados:</h3>
-			
-			<table id="newsletter_data" class="wp-list-table widefat fixed striped table-view-list posts">
-				<thead>
-					<tr>
-                        <td id="cb" class="manage-column column-cb check-column"><label class="screen-reader-text" for="cb-select-all-1">Selecionar todos</label><input id="cb-select-all-1" type="checkbox"></td>
-						<?php foreach( $columns as $key => $col ){
-							echo "<th>{$col['label']}</th>";
-						}
-						?>
-					</tr>
-				</thead>
-				<tfoot>
-					<tr>
-                        <td id="cb" class="manage-column column-cb check-column"><label class="screen-reader-text" for="cb-select-all-1">Selecionar todos</label><input id="cb-select-all-1" type="checkbox"></td>
-						<?php foreach( $columns as $key => $col ){
-							echo "<th>{$col['label']}</th>";
-						}
-						?>
-					</tr>
-				</tfoot>
-                <tbody id="the-list">
-                    <?php
-                    add_filter( 'boros_newsletter_admin_page_input_person_date', array($this, 'date_filter') );
-                    $i = 0;
-                    foreach( $cadastros as $i => $cad ){
-                    ?>
-                        <tr id="post-<?php echo $cad['person_id']; ?>" iedit author-other level-0 post-<?php echo $cad['person_id']; ?> type-post">
-                            <th scope="row" class="check-column">
-                                <label class="screen-reader-text" for="cb-select-<?php echo $cad['person_id']; ?>">selecionar</label>
-                                <input id="cb-select-<?php echo $cad['person_id']; ?>" type="checkbox" name="ne[]" value="<?php echo $cad['person_id']; ?>">
-                            </th>
-                            <?php
-                            $metadatas = maybe_unserialize($cad['person_metadata']);
-                            foreach( $columns as $key => $col ){
-                                if( $col['type'] == 'metadata' ){
-                                    $val = '';
-                                    if( isset($metadatas[$key]) ){
-                                        $val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $metadatas[$key] );
-                                    }
-                                    echo "<td>{$val}</td>";
-                                }
-                                else{
-                                    $val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $cad[$key] );
-                                    echo "<td>{$val}</td>";
-                                }
+            <?php
+            if( isset($_GET['pg']) ){
+                $pg = $_GET['pg'];
+            }
+            else{
+                $pg = 1;
+            }
+            // resultados por página
+            if( isset($_GET['per_page']) ){
+                $per_page = $_GET['per_page'];
+            }
+            else{
+                $per_page = 10;
+            }
+            // offset
+            $offset = ($pg - 1) * $per_page;
+            
+            global $wpdb, $post;
+            $tabela = self::table_name();
+            
+            // dados da página atual
+            $cadastros = $wpdb->get_results("
+                    SELECT *
+                    FROM $tabela
+                    ORDER BY person_id DESC
+                    LIMIT $offset, $per_page
+            ", ARRAY_A);
+            
+            // total de páginas
+            $total_paginas = ceil( $this->total_cadastros / $per_page );
+            
+            $columns = $this->get_admin_page_columns();
+            ?>
+            <form action="<?php echo remove_query_arg('pg', self_url()); ?>" method="post">
+                <?php wp_nonce_field('newsletter-remove-entries'); ?>
+                <input type="hidden" name="newsletter_action" value="remove">
+                <h3 style="display:flex;justify-content:space-between;align-items:center;">
+                    <strong><?php echo $this->total_cadastros; ?> itens cadastrados:</strong>
+                    <span><button type="submit" class="button">Remover selecionados</button></span>
+                </h3>
+                
+                <table id="newsletter_data" class="wp-list-table widefat fixed striped table-view-list posts">
+                    <thead>
+                        <tr>
+                            <td id="cb" class="manage-column column-cb check-column"><label class="screen-reader-text" for="cb-select-all-1">Selecionar todos</label><input id="cb-select-all-1" type="checkbox"></td>
+                            <?php foreach( $columns as $key => $col ){
+                                echo "<th>{$col['label']}</th>";
                             }
                             ?>
                         </tr>
+                    </thead>
+                    <tfoot>
+                        <tr>
+                            <td id="cb" class="manage-column column-cb check-column"><label class="screen-reader-text" for="cb-select-all-1">Selecionar todos</label><input id="cb-select-all-1" type="checkbox"></td>
+                            <?php foreach( $columns as $key => $col ){
+                                echo "<th>{$col['label']}</th>";
+                            }
+                            ?>
+                        </tr>
+                    </tfoot>
+                    <tbody id="the-list">
                         <?php
-                    }
-                    ?>
-                </tbody>
-			</table>
+                        add_filter( 'boros_newsletter_admin_page_input_person_date', array($this, 'date_filter') );
+                        $i = 0;
+                        foreach( $cadastros as $i => $cad ){
+                        ?>
+                            <tr id="post-<?php echo $cad['person_id']; ?>" iedit author-other level-0 post-<?php echo $cad['person_id']; ?> type-post">
+                                <th scope="row" class="check-column">
+                                    <label class="screen-reader-text" for="cb-select-<?php echo $cad['person_id']; ?>">selecionar</label>
+                                    <input id="cb-select-<?php echo $cad['person_id']; ?>" type="checkbox" name="ne[]" value="<?php echo $cad['person_id']; ?>">
+                                </th>
+                                <?php
+                                $metadatas = maybe_unserialize($cad['person_metadata']);
+                                foreach( $columns as $key => $col ){
+                                    if( $col['type'] == 'metadata' ){
+                                        $val = '';
+                                        if( isset($metadatas[$key]) ){
+                                            $val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $metadatas[$key] );
+                                        }
+                                        echo "<td>{$val}</td>";
+                                    }
+                                    else{
+                                        $val = apply_filters( "boros_newsletter_admin_page_input_{$key}", $cad[$key] );
+                                        echo "<td>{$val}</td>";
+                                    }
+                                }
+                                ?>
+                            </tr>
+                            <?php
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </form>
             
-			<div class="tablenav form-table" style="height:auto;">
-				<form action="<?php echo get_bloginfo('wpurl') . '/wp-admin/admin.php'; ?>" method="get">
-					Resultados por página:
-					<input type="hidden" name="page" value="newsletter_controls" />
-					<input type="hidden" name="pg" value="1" />
-					<input class="small-text" type="text" name="per_page" value="<?php echo $per_page; ?>" id="cadastros_per_page" /> 
-					<input class="button-primary" type="submit" value="ok" />
-				</form>
-				<div class="tablenav-pages" style="height:auto;">
+            <form action="<?php echo admin_url('admin.php'); ?>" method="get" class="tablenav">
+                Resultados por página:
+                <input type="hidden" name="page" value="newsletter_controls" />
+                <input type="hidden" name="pg" value="1" />
+                <input class="small-text" type="text" name="per_page" value="<?php echo $per_page; ?>" id="cadastros_per_page" /> 
+                <input class="button-primary" type="submit" value="ok" />
+            </form>
+            
+            <div class="tablenav form-table" style="height:auto;">
+                <div class="tablenav-pages" style="height:auto;">
+                    <span class="displaying-num"><?php echo $this->total_cadastros; ?> itens</span>
                     <span class="pagination-links">
                         <?php if( $pg > 1 ){ ?>
                         <a href="<?php echo add_query_arg( array('pg' => $pg - 1, 'per_page' => $per_page) ); ?>" class="button">&laquo;</a>
@@ -957,10 +976,10 @@ class BorosNewsletter {
                         <a href="<?php echo add_query_arg( array('pg' => $pg + 1, 'per_page' => $per_page) ); ?>" class="button">&raquo;</a>
                         <?php } ?>
                     </span>
-				</div>
-				<p style="clear:both;text-align:right">Tempo de consulta: <?php echo timer_stop(0,3); ?> segundos.</p>
-			</div>
-		</div><!-- fim de WRAP -->
+                </div>
+                <p style="clear:both;text-align:right">Tempo de consulta: <?php echo timer_stop(0,3); ?> segundos.</p>
+            </div>
+        </div><!-- fim de WRAP -->
 		<?php
 	}
 	
